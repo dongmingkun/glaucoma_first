@@ -10,6 +10,7 @@ RUNS = {
     "448": r"D:\glaucoma_work\runs\efficientnet_b3_448_1014_221755_b3_448",
     "512": r"D:\glaucoma_work\runs\efficientnet_b3_512_1014_233847_b3_512",
     "cx": r"D:\glaucoma_work\runs\convnext_tiny_384_1015_011832_cnxt_384",
+    "cx448": r"D:\glaucoma_work\runs\convnext_tiny_448_1015_045435_cnxt_448",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -89,3 +90,15 @@ report("ens cx+384+448", (probs["cx"] + probs["384"] + probs["448"]) / 3)
 report("ens cx*2+384+448+512", (2 * probs["cx"] + probs["384"] + probs["448"] + probs["512"]) / 5)
 report("ens logit cx+b3ens3", logit_mean([probs["cx"], probs["384"], probs["448"], probs["512"]]))
 report("ens rank cx+384+448+512", rank_avg([probs["cx"], probs["384"], probs["448"], probs["512"]]))
+
+print("\n--- 五模型（加入 ConvNeXt@448）---")
+report("cx448 alone", probs["cx448"])
+report("cx+cx448", (probs["cx"] + probs["cx448"]) / 2)
+b3 = (probs["384"] + probs["448"] + probs["512"]) / 3
+report("cx+cx448+b3ens3 (1:1:0.5)", (probs["cx"] + probs["cx448"] + 0.5 * b3) / 2.5)
+report("cx+cx448+b3ens3 (1:0.6:0.4)", (probs["cx"] + 0.6 * probs["cx448"] + 0.4 * b3) / 2.0)
+report("cx+cx448+b3ens3 (1:1:1)", (probs["cx"] + probs["cx448"] + b3) / 3)
+report("cx*1.5+cx448+b3ens3(1:0.5)", (1.5 * probs["cx"] + probs["cx448"] + 0.5 * b3) / 3)
+report("cx+cx448+384+448+512 (等权)", (probs["cx"] + probs["cx448"] + probs["384"] + probs["448"] + probs["512"]) / 5)
+report("cx2+cx4481+b3 (2:1:1)", (2 * probs["cx"] + probs["cx448"] + b3) / 4)
+report("logit cx+cx448+b3ens3", logit_mean([probs["cx"], probs["cx448"], probs["384"], probs["448"], probs["512"]]))
