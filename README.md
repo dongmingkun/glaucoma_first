@@ -39,7 +39,7 @@ python infer.py --ckpt <best.pt> --split test --tta 4 --out submission.csv
 - **本机内存**：16GB RAM + 页面文件 ≈ 48GB 提交上限；每个 torch 进程 ≥1.25GB。**任何时刻只跑一个 GPU 任务**；训练 `--workers 3`，否则 WinError 1455 崩溃
 - **蒸馏/复现**：GPU 功率墙 70W，B3@384 训练 ~41 张/秒（~21 min/epoch）
 - **复赛目标环境**：T4 16G，单图端到端 **≤100ms**，权重 **≤500MB**，torch 2.10.0+cu128 / Python 3.12
-- **提交配额**：每天 2 次，截止 2026-11-06 —— 任何提交前先在 Issue 登记并在 `SUBMISSIONS_LOG.md` 记录
+- **提交配额**：**每天 1 次**（首次报错可补 1 次，约 1 小时出分；以官方页面为准），截止 2026-11-06 —— 任何提交前先在 Issue 登记并在 `SUBMISSIONS_LOG.md` 记录
 
 ## 协作方式
 - 任务清单与分工都在 **Issues** 页；开始前先认领对应工单，完成后回填数字与结论
