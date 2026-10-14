@@ -144,3 +144,6 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
   - #7 [P2][风险] from-scratch 合规备选路径
   - #8 [P2][探索] 建模探索池
 - 规则：每天 2 次提交的任何使用先在对应 Issue 登记、提交后回填 LB 分数；实验结论（含失败）写回 Issue
+- 分工（2026-10-14，待两位接受仓库邀请；如需调整在对应 Issue 回复）：
+  - @Yulingling-sc：训练方向 → #2 448 集成、#3 全量重训、#4 B4 实验、#8 探索池
+  - @JiahaoChen-star-JJ：评估/工程方向 → #1 评分口径、#5 复赛镜像、#6 提交台账、#7 合规备选
