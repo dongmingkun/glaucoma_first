@@ -1,0 +1,25 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ===== 数据 =====
+# 图片目录体积大（~38GB），不入库；从比赛平台下载后放在 glaucoma_first/ 下
+glaucoma_first/train/
+glaucoma_first/valid/
+glaucoma_first/test/
+# 本地预处理缓存（在 D:\glaucoma_work\cache512）
+cache512/
+
+# ===== 大文件（另行分发，不入库）=====
+*.pt
+*.pth
+*.npy
+submit_pkg/model_weights.pt
+
+# ===== 本地临时产物 =====
+thumbs/
+tmp/
+*.log
