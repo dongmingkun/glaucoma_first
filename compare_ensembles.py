@@ -9,6 +9,7 @@ RUNS = {
     "384": r"D:\glaucoma_work\runs\efficientnet_b3_384_1014_194338_b3_384_cont",
     "448": r"D:\glaucoma_work\runs\efficientnet_b3_448_1014_221755_b3_448",
     "512": r"D:\glaucoma_work\runs\efficientnet_b3_512_1014_233847_b3_512",
+    "cx": r"D:\glaucoma_work\runs\convnext_tiny_384_1015_011832_cnxt_384",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -60,7 +61,8 @@ def logit_mean(ps):
 
 
 print()
-for name, ps in [("single 384", [probs["384"]]), ("single 448", [probs["448"]]), ("single 512", [probs["512"]])]:
+for name, ps in [("single 384", [probs["384"]]), ("single 448", [probs["448"]]), ("single 512", [probs["512"]]),
+                 ("single convnext", [probs["cx"]])]:
     report(name, ps[0])
 
 print()
@@ -75,3 +77,15 @@ report("ens 384+1.5*448", (probs["384"] + 1.5 * probs["448"]) / 2.5)
 report("ens 384+448+0.5*512", (probs["384"] + probs["448"] + 0.5 * probs["512"]) / 2.5)
 report("ens logit 384+448", logit_mean([probs["384"], probs["448"]]))
 report("ens logit 384+448+512", logit_mean([probs["384"], probs["448"], probs["512"]]))
+
+print("\n--- 加入 ConvNeXt ---")
+report("ens cx alone", probs["cx"])
+report("ens cx+384", (probs["cx"] + probs["384"]) / 2)
+report("ens cx+448", (probs["cx"] + probs["448"]) / 2)
+report("ens cx+b3ens3", (probs["cx"] + (probs["384"] + probs["448"] + probs["512"]) / 3) / 2)
+report("ens cx+b3ens3 (1:0.5)", (probs["cx"] + 0.5 * (probs["384"] + probs["448"] + probs["512"]) / 3) / 1.5)
+report("ens cx+b3ens3 (0.6:0.4)", 0.6 * probs["cx"] + 0.4 * (probs["384"] + probs["448"] + probs["512"]) / 3)
+report("ens cx+384+448", (probs["cx"] + probs["384"] + probs["448"]) / 3)
+report("ens cx*2+384+448+512", (2 * probs["cx"] + probs["384"] + probs["448"] + probs["512"]) / 5)
+report("ens logit cx+b3ens3", logit_mean([probs["cx"], probs["384"], probs["448"], probs["512"]]))
+report("ens rank cx+384+448+512", rank_avg([probs["cx"], probs["384"], probs["448"], probs["512"]]))

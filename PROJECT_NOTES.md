@@ -14,6 +14,20 @@
 - 预期：跳到 ~94.4 → 阈值类确认；停在 ~90.9 → 排序类确认
 - 校准实现：`make_submission.py --calibrate`（唯一提交入口，内含四口径预期分 + 格式校验）
 
+## 🚀 架构级发现：ConvNeXt-Tiny 全面超过 EfficientNet-B3 家族（2026-10-15 凌晨）
+同样的数据/增强/损失/训练配方，ConvNeXt-Tiny@384（8 epoch 从 ImageNet 权重从头训）达到：
+- 无 TTA：EMA AUROC **0.9873** / AUPRC **0.8392**（B3 最好 0.9849/0.8047）
+- 4x TTA：**AUROC 0.98945 / AUPRC 0.85584**（单模就超过 B3 三方集成 0.98517/0.83270）
+
+四模型集成（ConvNeXt + B3三方，权重 1:0.5）：
+- **AUROC 0.98979 / AUPRC 0.86374 / 混合 92.68 / max平衡准确率 95.54**（全面最优）
+- 提交文件：`submission_20251015_ens4_cal.csv`
+
+**对后续工作的影响**：
+- ConvNeXt 家族应是主力（#4 的 B4 实验改为 ConvNeXt 系列实验更值）
+- 待做：ConvNeXt@448 微调（分辨率对 AUPRC 有效）、ConvNeXt train-on-all、第二个 ConvNeXt（种子/尺寸多样性）
+- ConvNeXt 训练成本：384 时 ~21 分钟/epoch（8 epoch ≈ 2.8h），显存仅 3.4GB（bs16+accum3）
+
 ## 赛题要点
 - 任务：眼底彩照 → 青光眼阳性概率（二分类），提交 `submission.csv`（Image_name, Probability, Pred_Label）
 - 指标：主 AUROC，次 AUPRC；每天限 2 次提交；截止 2026-11-06
