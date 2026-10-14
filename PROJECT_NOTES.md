@@ -131,3 +131,16 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - [ ] 提升方向：B4@448、train+valid 全量重训、双模型集成（T4 上两模型 ~80ms 仍满足 100ms、总大小 <500MB）
 - [ ] 复赛模型打包：需兼容 torch 2.10 + Python 3.12（本地 3.11 的 checkpoint 通用，但打包代码要在 3.12 下测）
 - [ ] 规则风险：仅允许主办方数据 → ImageNet 预训练权重属于通用初始化而非外部标注医学数据，行业惯例允许；如需绝对保守可训练 from scratch（预计掉点明显）
+
+## 协作（GitHub）
+- 仓库（私有）：https://github.com/dongmingkun/glaucoma_first
+- 后续工作已拆成工单（Issues），按优先级：
+  - #1 [P0][评估] 判定官方评分口径 + 校准提交 A/B
+  - #2 [P0][训练] B3@448 微调收尾 + 与 B3@384 集成
+  - #3 [P1][训练] train+valid 全量重训（--train-on-all）
+  - #4 [P1][训练] B4@384 / B4@448 对比实验
+  - #5 [P0][工程] 复赛镜像实测（py3.12 + T4）+ predict.py 多模型支持
+  - #6 [P2][流程] 提交台账与实验记录规范
+  - #7 [P2][风险] from-scratch 合规备选路径
+  - #8 [P2][探索] 建模探索池
+- 规则：每天 2 次提交的任何使用先在对应 Issue 登记、提交后回填 LB 分数；实验结论（含失败）写回 Issue
