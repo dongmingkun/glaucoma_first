@@ -158,6 +158,14 @@ class FundusDS(Dataset):
         return t, age_tensor(age), torch.tensor(label, dtype=torch.float32)
 
 
+def select_score(auroc, auprc, mode):
+    if mode == "auroc":
+        return auroc
+    if mode == "auprc":
+        return auprc
+    return 0.5 * (auroc + auprc)
+
+
 class ModelEMA:
     def __init__(self, model, decay=0.999):
         self.ema = {k: v.detach().clone().float() for k, v in model.state_dict().items()}
@@ -313,6 +321,8 @@ def main():
     ap.add_argument("--ema-decay", type=float, default=0.999)
     ap.add_argument("--train-on-all", action="store_true", help="add valid into train, no val split (final model)")
     ap.add_argument("--init-from", default=None, help="load weights only (state_dict) to warm start")
+    ap.add_argument("--select-metric", default="blend", choices=["auroc", "blend", "auprc"],
+                    help="checkpoint 选择标准: auroc | blend=0.5*(auroc+auprc) | auprc")
     ap.add_argument("--tag", default="")
     args = ap.parse_args()
 
@@ -450,14 +460,16 @@ def main():
             csv.writer(f).writerow([epoch, round(train_loss, 5), round(vloss, 5), round(auroc, 5), round(auprc, 5),
                                     round(auroc_e, 5), round(auprc_e, 5), round(lr_now, 8), round(time.time() - t0, 1)])
         ckpt = {"model": model.state_dict(), "ema": ema.ema, "arch": args.arch, "img_size": args.img_size,
-                "epoch": epoch, "auroc": auroc, "auroc_ema": auroc_e, "val_rows": [(r[0], r[1]) for r in val_rows],
+                "epoch": epoch, "auroc": auroc, "auroc_ema": auroc_e, "auprc": auprc, "auprc_ema": auprc_e,
+                "val_rows": [(r[0], r[1]) for r in val_rows],
                 "args": vars(args)}
         torch.save(ckpt, os.path.join(exp, "last.pt"))
-        key = max(auroc, auroc_e)
+        key = max(select_score(auroc, auprc, args.select_metric),
+                  select_score(auroc_e, auprc_e, args.select_metric))
         if key > best_auroc:
             best_auroc = key
             torch.save(ckpt, os.path.join(exp, "best.pt"))
-            print(f"  new best: {best_auroc:.4f} -> best.pt", flush=True)
+            print(f"  new best ({args.select_metric}): {best_auroc:.4f} -> best.pt", flush=True)
 
     print(f"done. best AUROC = {best_auroc:.4f}")
 

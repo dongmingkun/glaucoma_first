@@ -122,12 +122,16 @@ $VENV train.py --arch efficientnet_b3 --img-size 384 --epochs 6 --batch-size 24 
 # 单模型评估（自动存 probs_valid_full_tta4.npy）
 $VENV evaluate.py --ckpt runs/A/best.pt --tta 4
 
-# 集成对比（只看指标，不出提交）
-$VENV ensemble.py --ckpt runs/A/best.pt runs/B/best.pt --eval --tta 4
+# 集成对比（只看指标，不出提交；改 compare_ensembles.py 里的路径即可）
+$VENV compare_ensembles.py
 
 # 出提交（唯一入口）
 $VENV make_submission.py --ckpt runs/A/best.pt runs/B/best.pt --tta 4 --calibrate --out submission.csv
 ```
+
+### 两条血泪教训（2026-10-15 补充）
+1. **checkpoint 选择标准**：`--select-metric` 默认已是 `blend`（= 0.5*(AUROC+AUPRC)）。原因：512 分辨率那次，只按 AUROC 选出的 best.pt 恰好是 AUPRC 最差的 epoch（AUPRC 0.77 vs 最优 0.8112，差 0.04）——被选中的模型在混合/阈值类口径下很吃亏，而选择依据的差异（AUROC 0.9821 vs 0.9816）根本在噪声内。
+2. **分辨率与过拟合**：448 相对 384 提升 AUPRC；但 512 从 448 热启动后 4 个 epoch 里 AUPRC 一路下滑（过拟合）。**高分辨率微调建议只跑 1-2 epoch**，并盯住验证集 AUPRC 曲线。
 
 ## 8. 规矩
 
