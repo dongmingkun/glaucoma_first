@@ -1,0 +1,81 @@
+# 团队活动通知：把队友的 push / PR 变成一条 @你 的评论（GitHub 原生通知，无需外部服务）
+# 触发：任何分支的 push、PR 的打开/重开/可评审/关闭
+# 行为：在「📣 团队活动日志（自动通知）」工单里追加一条记录，并 @ 仓库主
+# 说明：仓库主自己的 push/PR 不通知（避免自扰）；想改通知范围直接改本文件
+name: team-activity-notify
+
+on:
+  push:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: activity-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment activity into tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const OWNER_LOGIN = 'dongmingkun';
+            const TRACKING_TITLE = '📣 团队活动日志（自动通知）';
+            const short = (s) => String(s || '').split('\n')[0].slice(0, 120);
+
+            let headline = null;
+            let detail = '';
+
+            if (context.eventName === 'push') {
+              const commits = context.payload.commits || [];
+              const who = (context.payload.pusher && context.payload.pusher.name) || 'unknown';
+              if (who === OWNER_LOGIN) { core.info('owner push, skip'); return; }
+              const branch = context.ref.replace('refs/heads/', '');
+              const msgs = commits.slice(-5).map(c => `- ${short(c.message)} (${c.id.slice(0, 7)})`).join('\n');
+              headline = `push → \`${branch}\` — ${commits.length} 个提交，by **${who}**`;
+              detail = msgs || '- (空提交)';
+            } else if (context.eventName === 'pull_request') {
+              const pr = context.payload.pull_request;
+              if (pr.user.login === OWNER_LOGIN) { core.info('owner PR, skip'); return; }
+              const action = context.payload.action;
+              if (action === 'closed') {
+                headline = `PR #${pr.number} ${pr.merged ? '✅ 已合并' : '⛔ 已关闭'}：${short(pr.title)}`;
+                detail = `分支：\`${pr.head.ref}\` → \`${pr.base.ref}\` ｜ 操作者：@${context.actor}`;
+              } else {
+                headline = `新 PR #${pr.number}（${action}）：${short(pr.title)}`;
+                detail = `作者：@${pr.user.login} ｜ 分支：\`${pr.head.ref}\` → \`${pr.base.ref}\`\n\n${pr.html_url}`;
+              }
+            } else {
+              headline = '手动测试（workflow_dispatch）';
+              detail = `触发者：@${context.actor}`;
+            }
+
+            const issues = await github.rest.issues.listForRepo({ owner, repo, state: 'open', per_page: 100 });
+            let issue = issues.data.find(i => i.title === TRACKING_TITLE && !i.pull_request);
+            if (!issue) {
+              const created = await github.rest.issues.create({
+                owner, repo,
+                title: TRACKING_TITLE,
+                body: [
+                  '本工单由 `.github/workflows/activity-notify.yml` 自动维护：',
+                  '',
+                  '- 队友的 **push**（任意分支）、**PR 打开/重开/合并/关闭** 会在下面追加一条记录，并 @ 仓库主',
+                  '- 仓库主本人（@dongmingkun）的操作不通知，避免自扰',
+                  '- 想缩小/扩大通知范围（例如只在 push 到 main 时通知），直接修改该工作流文件',
+                ].join('\n'),
+              });
+              issue = created.data;
+            }
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: issue.number,
+              body: `**${headline}**\n\n${detail}\n\n@${OWNER_LOGIN} — <sub>${new Date().toISOString()} ｜ ${context.eventName}</sub>`,
+            });
