@@ -30,7 +30,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision
 from torchvision.models import (
     EfficientNet_B0_Weights, EfficientNet_B3_Weights, EfficientNet_B4_Weights,
-    ConvNeXt_Tiny_Weights, ConvNeXt_Small_Weights, ResNet50_Weights,
+    ConvNeXt_Tiny_Weights, ConvNeXt_Small_Weights, ConvNeXt_Base_Weights, ResNet50_Weights,
 )
 
 CACHE_ROOT = r"D:\glaucoma_work\cache512"
@@ -43,6 +43,7 @@ ARCH_INFO = {
     "efficientnet_b4": (torchvision.models.efficientnet_b4, EfficientNet_B4_Weights.DEFAULT, 1792),
     "convnext_tiny": (torchvision.models.convnext_tiny, ConvNeXt_Tiny_Weights.DEFAULT, 768),
     "convnext_small": (torchvision.models.convnext_small, ConvNeXt_Small_Weights.DEFAULT, 768),
+    "convnext_base": (torchvision.models.convnext_base, ConvNeXt_Base_Weights.DEFAULT, 1024),
     "resnet50": (torchvision.models.resnet50, ResNet50_Weights.DEFAULT, 2048),
 }
 
