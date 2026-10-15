@@ -6,8 +6,10 @@ from multiprocessing import Pool
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-CACHE = os.environ.get("GLAUCOMA_CACHE", r"D:\glaucoma_work\cache512")
-CSV_ROOT = os.environ.get("GLAUCOMA_CSV", r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import CACHE_ROOT, CSV_ROOT  # noqa: E402  自动探测（env → 仓库布局 → 旧路径）
+
+CACHE = CACHE_ROOT
 SPLITS = ["train", "valid", "test"]
 
 

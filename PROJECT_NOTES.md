@@ -157,9 +157,18 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 ```
 **注意**：任何时候只跑一个 GPU 任务；训练用 `--workers 3`；崩溃后用 `--init-from` 恢复。
 
+## ✅ Issue #3：train+valid 全量重训（工程侧已完成，2026-10-15）
+完整手册见 **[docs/TRAIN_ON_ALL.md](docs/TRAIN_ON_ALL.md)**。要点：
+
+- **原来 `--train-on-all` 根本跑不起来**：`CSV_ROOT`/`CACHE_ROOT` 写死队长机器路径，换机器必炸。已抽到 `paths.py`（环境变量 → 仓库布局 → 旧路径三级回退），`train.py` 另加 `--csv-root` / `--cache-root`
+- **epoch 要按 step 对齐，不是按 epoch 对齐**：数据多 11.4%，`epochs_on_all = round(epochs/1.114)`。沿用 train-only 的 epoch 数就是多训 11.4% step —— B3@512 就是这么过拟合的
+- **全量模型的 valid 指标是假的**，别回填；验收改用 `check_train_on_all.py`（与 train-only 参考模型在 test 上比 Spearman ≥0.90 + mean 相对偏差 ≤25%）
+- **校准系数必须来自 train-only 模型**：全量模型在 valid 上概率虚高，用它拟合 shift 会把阈值推歪
+- 修掉的配套缺陷：只写 `last.pt` 不写 `best.pt`（下游接不上）、无 val 仍建 val DataLoader（白占内存）、全量模式不写 `log.csv`（盲训）、下游靠 `-1 >= -1` 巧合选 EMA
+
 ## 待办 / 提升方向（按性价比排序）
 - [ ] **继续训练**：epoch 曲线还在涨，再加 3-5 epoch 预计 +0.002~0.005
-- [ ] **train+valid 全量重训**：`--train-on-all`（+11% 数据，约 +0.002，代价是无法验证只能信 epoch 数）
+- [x] **train+valid 全量重训**：`--train-on-all` 工程侧就绪（Issue #3），待在有数据的机器上实跑
 - [ ] **抬高分辨率微调**：B3@448 或 B4@384 微调 2-3 epoch，与现有模型做集成（两模型 T4 上 ~17ms/图，仍满足 100ms；总大小 150MB < 500MB）
 - [ ] **复赛镜像内实测** predict.py（Python 3.12 + T4）
 - [ ] 规则风险：仅允许主办方数据 → ImageNet 预训练权重属于通用初始化，行业惯例允许；如需绝对保守可 from scratch 训练（预计掉点明显，需 `pretrained=False` 支持）
@@ -223,7 +232,7 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - 后续工作已拆成工单（Issues），按优先级：
   - #1 [P0][评估] 判定官方评分口径 + 校准提交 A/B
   - #2 [P0][训练] B3@448 微调收尾 + 与 B3@384 集成
-  - #3 [P1][训练] train+valid 全量重训（--train-on-all）
+  - #3 [P1][训练] train+valid 全量重训（--train-on-all）→ **工程侧已就绪**（2026-10-15，手册 docs/TRAIN_ON_ALL.md），剩实跑
   - #4 [P1][训练] B4@384 / B4@448 对比实验
   - #5 [P0][工程] 复赛镜像实测（py3.12 + T4）+ predict.py 多模型支持
   - #6 [P2][流程] 提交台账与实验记录规范
@@ -234,6 +243,7 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
   - **#2 已完成**（队长机器上跑完）：B3@448 微调（AUPRC 0.8267）+ 384+448 集成（AUROC 0.98507 / AUPRC 0.82839）+ 校准版提交文件 `submission_20251015_ens_cal.csv` 已就绪 → **训练线队友请直接做 #3 / #4 / #8**
   - **#1 产物已就绪**：判别实验文件已生成，**无需等队员合并即可提交**（建议明天就交，锁定口径结论；队员合并后的产物留给后天）
   - **新增** `make_submission.py`（唯一提交入口，一条命令：评估→集成→校准→写CSV→格式校验→四口径预期分）
+  - **#3 工程侧完成**（2026-10-15）：`paths.py` 路径解析 + `--train-on-all` 闭环修复 + `check_train_on_all.py` 验收 + `docs/TRAIN_ON_ALL.md` 手册。**训练线队友按手册实跑即可**，注意 epoch 要除以 1.114
   - **新增** `docs/TEAM_HANDOFF.md`（队员上手文档：环境/数据/命令/交付物约定/铁律）
 - 分工（2026-10-14，待两位接受仓库邀请；如需调整在对应 Issue 回复）：
   - @Yulingling-sc：训练方向 → #2 448 集成、#3 全量重训、#4 B4 实验、#8 探索池

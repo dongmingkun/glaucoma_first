@@ -33,9 +33,7 @@ from torchvision.models import (
     ConvNeXt_Tiny_Weights, ConvNeXt_Small_Weights, ConvNeXt_Base_Weights, ResNet50_Weights,
 )
 
-CACHE_ROOT = r"D:\glaucoma_work\cache512"
-CSV_ROOT = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first"
-AGE_MEDIAN = 58.0
+from paths import AGE_MEDIAN, CACHE_ROOT, CSV_ROOT, load_rows  # noqa: E402  shared, torch-free path resolution
 
 ARCH_INFO = {
     "efficientnet_b0": (torchvision.models.efficientnet_b0, EfficientNet_B0_Weights.DEFAULT, 1280),
@@ -91,24 +89,6 @@ class FundusNet(nn.Module):
         f = torch.flatten(f, 1)
         a = self.age_mlp(age)
         return self.head(torch.cat([f, a], dim=1)).squeeze(1)
-
-
-def load_rows(split):
-    path = os.path.join(CSV_ROOT, split + ".csv")
-    rows = []
-    with open(path, "r", encoding="utf-8-sig", newline="") as f:
-        for r in csv.DictReader(f):
-            name = r["Image_name"]
-            stem = name.rsplit(".", 1)[0]
-            try:
-                age = float(r["Age"])
-            except (ValueError, TypeError):
-                age = AGE_MEDIAN
-            if age < 1 or age > 110:
-                age = AGE_MEDIAN
-            label = float(r["True_Label"]) if "True_Label" in r else -1.0
-            rows.append((stem, min(max(age, 10.0), 100.0), label))
-    return rows
 
 
 def age_tensor(age):
@@ -307,8 +287,6 @@ def evaluate(model, loader, device, crit):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arch", default="efficientnet_b3", choices=list(ARCH_INFO))
-    ap.add_argument("--cache-root", default=CACHE_ROOT,
-                    help=r"image cache dir; use D:\glaucoma_work\cache768 for high-res experiments")
     ap.add_argument("--img-size", type=int, default=384)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=32)
@@ -333,7 +311,18 @@ def main():
     ap.add_argument("--select-metric", default="blend", choices=["auroc", "blend", "auprc"],
                     help="checkpoint 选择标准: auroc | blend=0.5*(auroc+auprc) | auprc")
     ap.add_argument("--tag", default="")
+    ap.add_argument("--cache-root", default=None, help="override 512px cache dir (default: auto-detect)")
+    ap.add_argument("--csv-root", default=None, help="override folder with train/valid/test.csv")
     args = ap.parse_args()
+
+    global CACHE_ROOT, CSV_ROOT
+    if args.cache_root:
+        CACHE_ROOT = args.cache_root
+    if args.csv_root:
+        CSV_ROOT = args.csv_root
+    args.cache_root = CACHE_ROOT   # 关键：把"生效的"缓存路径写进 ckpt 元数据，推理端据此选缓存
+    print(f"CSV_ROOT   = {CSV_ROOT}")
+    print(f"CACHE_ROOT = {CACHE_ROOT}")
 
     set_seed(args.seed)
     device = "cuda"
@@ -347,10 +336,18 @@ def main():
 
     train_rows = load_rows("train")
     val_rows = load_rows("valid")
+    n_train_only = len(train_rows)
     if args.train_on_all:
         all_rows = train_rows + val_rows
         random.Random(args.seed).shuffle(all_rows)
         train_rows = all_rows
+        ratio = len(all_rows) / max(1, n_train_only)
+        print(f"[train-on-all] rows {n_train_only} -> {len(train_rows)} (+{(ratio - 1) * 100:.1f}%)")
+        print(f"[train-on-all] NOTE: one epoch now costs {ratio:.3f}x the optimizer steps. "
+              f"To match a train-only run of {args.epochs} epochs, use "
+              f"--epochs {max(1, round(args.epochs / ratio))} (same total steps).")
+        print("[train-on-all] no validation split -> val AUROC/AUPRC are MEANINGLESS for this "
+              "checkpoint. Use check_train_on_all.py to compare against a reference model.")
     if args.subset:
         rng = random.Random(args.seed)
         pos = [r for r in train_rows if r[2] == 1]
@@ -362,20 +359,26 @@ def main():
     npos = sum(1 for r in train_rows if r[2] == 1)
     print(f"train rows={len(train_rows)} pos={npos} ({npos/max(1,len(train_rows)):.4f})")
 
-    ds_tr = MixedDS(train_rows, args.img_size, cache_root=args.cache_root) if args.train_on_all else \
-        FundusDS("train", train_rows, args.img_size, train=True, cache_root=args.cache_root)
-    ds_va = FundusDS("valid", val_rows, args.img_size, train=False, cache_root=args.cache_root)
+    ds_tr = MixedDS(train_rows, args.img_size, cache_root=CACHE_ROOT) if args.train_on_all else \
+        FundusDS("train", train_rows, args.img_size, train=True, cache_root=CACHE_ROOT)
+    dl_tr, dl_va = None, None
     if args.loader == "threads":
         dl_tr = ThreadLoader(ds_tr, args.batch_size, nthreads=args.threads, shuffle=True, drop_last=True)
-        dl_va = ThreadLoader(ds_va, max(32, args.batch_size), nthreads=args.threads, qsize=96,
-                             shuffle=False, drop_last=False)
     else:
         dl_tr = DataLoader(ds_tr, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                            pin_memory=True, drop_last=True, persistent_workers=args.workers > 0,
                            prefetch_factor=4 if args.workers > 0 else None)
-        dl_va = DataLoader(ds_va, batch_size=max(32, args.batch_size), shuffle=False,
-                           num_workers=max(2, args.workers // 2), pin_memory=True,
-                           persistent_workers=False, prefetch_factor=2)
+    # train-on-all: valid is inside the training set, so no val loader at all.
+    # Skipping it also avoids paying the ~1.25GB/worker commit charge we can't afford.
+    if not args.train_on_all:
+        ds_va = FundusDS("valid", val_rows, args.img_size, train=False)
+        if args.loader == "threads":
+            dl_va = ThreadLoader(ds_va, max(32, args.batch_size), nthreads=args.threads, qsize=96,
+                                 shuffle=False, drop_last=False)
+        else:
+            dl_va = DataLoader(ds_va, batch_size=max(32, args.batch_size), shuffle=False,
+                               num_workers=max(2, args.workers // 2), pin_memory=True,
+                               persistent_workers=False, prefetch_factor=2)
 
     model = FundusNet(args.arch, pretrained=bool(args.pretrained)).to(device)
     if args.init_from:
@@ -452,9 +455,24 @@ def main():
 
         train_loss = run_loss / max(1, nseen)
         if args.train_on_all:
-            torch.save({"model": model.state_dict(), "ema": ema.ema, "arch": args.arch,
-                        "img_size": args.img_size, "epoch": epoch}, os.path.join(exp, "last.pt"))
-            print(f"epoch {epoch}: train_loss={train_loss:.4f} ({time.time()-t0:.0f}s) saved last.pt")
+            sec = time.time() - t0
+            lr_now = opt.param_groups[0]["lr"]
+            # No val split -> EMA is the only defensible pick (it won on val in every
+            # train-only run). Record it explicitly so downstream tools don't guess.
+            ckpt = {"model": model.state_dict(), "ema": ema.ema, "arch": args.arch,
+                    "img_size": args.img_size, "epoch": epoch, "epochs": args.epochs,
+                    "train_on_all": True, "train_on_all_rows": len(train_rows),
+                    "use": "ema", "val_metrics_meaningful": False,
+                    "auroc": -1.0, "auroc_ema": -1.0, "auprc": -1.0, "auprc_ema": -1.0,
+                    "train_loss": train_loss, "args": vars(args)}
+            torch.save(ckpt, os.path.join(exp, "last.pt"))
+            # best.pt too: make_submission.py / ensemble.py / the handoff doc all expect it.
+            torch.save(ckpt, os.path.join(exp, "best.pt"))
+            with open(log_path, "a", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow([epoch, round(train_loss, 5), "", "", "", "", "",
+                                        round(lr_now, 8), round(sec, 1)])
+            print(f"epoch {epoch}: train_loss={train_loss:.4f} lr={lr_now:.2e} ({sec:.0f}s) "
+                  f"commit={proc_commit_mb():.0f}MB -> last.pt + best.pt (train-on-all, no val)", flush=True)
             continue
 
         auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit)
@@ -480,7 +498,14 @@ def main():
             torch.save(ckpt, os.path.join(exp, "best.pt"))
             print(f"  new best ({args.select_metric}): {best_auroc:.4f} -> best.pt", flush=True)
 
-    print(f"done. best AUROC = {best_auroc:.4f}")
+    if args.train_on_all:
+        print(f"done. train-on-all {args.epochs} epochs -> {exp}")
+        print("  best.pt == last.pt (final epoch, EMA weights). Val metrics do NOT exist "
+              "for this checkpoint by construction -- do not report them.")
+        print(f"  next: python check_train_on_all.py --ckpt {os.path.join(exp, 'best.pt')} "
+              f"--ref <train-only best.pt> --tta 4")
+    else:
+        print(f"done. best AUROC = {best_auroc:.4f}")
 
 
 class MixedDS(Dataset):

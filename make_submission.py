@@ -125,7 +125,9 @@ def apply_shift(p, shift):
 def load_model(ckpt_path, device="cuda"):
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     arch = ckpt.get("arch", "efficientnet_b3")
-    use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
+    use = ckpt.get("use")
+    if use not in ("ema", "model"):
+        use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
     m = FundusNet(arch, pretrained=False).to(device)
     m.load_state_dict(ckpt[use], strict=True)
     m.eval()
@@ -160,12 +162,18 @@ def main():
     val_probs, test_probs = [], []
     for i, ck in enumerate(args.ckpt):
         model, img_size, use, ckpt, cache_root = load_model(ck)
+        if ckpt.get("train_on_all"):
+            print(f"[{i}] !! WARNING: {ck} is a --train-on-all checkpoint. Valid rows were part of "
+                  f"its training set, so its AUROC/AUPRC/balACC are contaminated and any "
+                  f"calibration fitted on them is unreliable.", flush=True)
         pv = predict_split(model, "valid", valid_rows, img_size, flips, args.workers, cache_root=cache_root)
         pt = predict_split(model, "test", test_rows, img_size, flips, args.workers, cache_root=cache_root)
         rm, tm = ranking_metrics(y, pv), threshold_metrics(y, pv)
         print(f"[{i}] {os.path.basename(os.path.dirname(ck))} use={use} img={img_size} "
+              f"cache={os.path.basename(str(cache_root))} "
               f"AUROC={rm['auroc']:.5f} AUPRC={rm['auprc']:.5f} balACC@0.5={tm['balacc']:.5f}", flush=True)
-        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, "cache_root": cache_root, **rm, **tm})
+        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, "cache_root": cache_root,
+                                 "train_on_all": bool(ckpt.get("train_on_all", False)), **rm, **tm})
         val_probs.append(pv)
         test_probs.append(pt)
         del model
