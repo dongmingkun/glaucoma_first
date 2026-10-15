@@ -14,6 +14,7 @@ RUNS = {
     "cs": r"D:\glaucoma_work\runs\convnext_small_384_1015_060006_cnxs_384",
     "cb": r"D:/glaucoma_work/runs/convnext_base_384_1015_113411_cnxb_384",
     "hi": r"D:/glaucoma_work/runs/convnext_small_512_1015_170341_cs_hi512",
+    "hi2": r"D:/glaucoma_work/runs/convnext_small_512_1015_191923_cs_hi512_v2",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -143,3 +144,16 @@ report("cb+hi+0.5cs+b3 (1:1:0.5:0.5)", (probs["cb"] + probs["hi"] + 0.5*probs["c
 report("hi+cs+b3 (1:1:0.5)", (probs["hi"] + probs["cs"] + 0.5*b3) / 2.5)
 report("hi*1.5+cb+b3 (1.5:1:0.5)", (1.5*probs["hi"] + probs["cb"] + 0.5*b3) / 3.0)
 report("对比: cb+cs+b3 (1:1:0.5)", (probs["cb"] + probs["cs"] + 0.5*b3) / 2.5)
+
+
+print(chr(10) + "--- hi512_v2（续训版）---")
+report("hi2 alone", probs["hi2"])
+report("hi2+cb+b3 (1:1:0.5)", (probs["hi2"] + probs["cb"] + 0.5*b3) / 2.5)
+report("hi2*1.5+cb+b3 (1.5:1:0.5)", (1.5*probs["hi2"] + probs["cb"] + 0.5*b3) / 3.0)
+report("hi2+hi+cb+b3 (1:1:1:0.5)", (probs["hi2"] + probs["hi"] + probs["cb"] + 0.5*b3) / 3.5)
+report("hi2*1.5+hi+cb+b3 (1.5:1:1:0.5)", (1.5*probs["hi2"] + probs["hi"] + probs["cb"] + 0.5*b3) / 4.0)
+report("hi2*1.5+hi*0.5+cb+b3", (1.5*probs["hi2"] + 0.5*probs["hi"] + probs["cb"] + 0.5*b3) / 3.5)
+report("hi2+cs+cb+b3 (1:1:1:0.5)", (probs["hi2"] + probs["cs"] + probs["cb"] + 0.5*b3) / 3.5)
+report("hi2*2+cb+b3 (2:1:0.5)", (2*probs["hi2"] + probs["cb"] + 0.5*b3) / 3.5)
+report("对比 ens6 配方(cs1+cx0.4+b30.6)", (probs["cs"] + 0.4*probs["cx"] + 0.6*b3) / 2.0)
+report("对比 当前最优(hi1.5+cb+b3)", (1.5*probs["hi"] + probs["cb"] + 0.5*b3) / 3.0)

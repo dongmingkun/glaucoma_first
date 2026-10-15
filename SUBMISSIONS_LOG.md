@@ -9,7 +9,8 @@
 |---|---|---|---|---|---|---|---|---|
 | 2026-10-14 | @dongmingkun | `submission.csv` | `6303c195` | `efficientnet_b3_384_1014_194338_b3_384_cont` | 4x | 否 | **89.20**（第 34 名） | 疑似阈值敏感口径，待 #1 A/B 验证 |
 | 2026-10-15 | @dongmingkun | `submission_20251015_ens4_cal.csv` | `2f065a39` | ConvNeXt-Tiny + B3×3 四模型集成 | 4x | 是 | **94.07（第 3 名）** | 两候选并存：balACC 差 −1.47、混合差 +1.39，均在 ±1.4 抽样噪声内 |
-| 2026-10-16（计划） | @dongmingkun | `submission_20251016_ens6_cal.csv` | 待生成 | 六模型集成（Small@512 on 768缓存 + Tiny + Base + B3×3） | 4x | 是 | 待回填 | 第三数据点，用于区分两候选 |
+| 2026-10-16（计划） | @dongmingkun | `submission_20251016_ens7_cal.csv` | `c6117ed5` | hi512_v2×2 + Base@384 + B3×3（权重 2:1:0.5） | 4x | 是 | 待回填 | 第三数据点：阈值类预期 ~96.1 / 排序类预期 ~93.6 |
+> 备选：`submission_20251016_ens6_cal.csv`（`6708b2a7`，Small@512+Tiny+Base+B3×3；AUPRC 0.86999 / blend 93.00，弱于 ens7）
 
 > 备注：`submission_cal.csv`（`f49f2242`，B3@384 单模型校准版）与 `submission_20251015_ens3_cal.csv`（`d7f50bc4`，B3 三方集成校准版）为备选产物，未提交。
 
