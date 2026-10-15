@@ -96,6 +96,7 @@ def main():
     slim_bytes = sum(v.numel() * v.element_size() for v in sd_fp16.values())
 
     out = args.out or os.path.join(os.path.dirname(args.inp), default_out_name(ckpt, use))
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     out_ckpt = {
         "state_dict": sd_fp16,          # 通用键（本工具/其他脚本）
         use: sd_fp16,                    # 与 train.py / predict.py 的读取约定对齐（ckpt[use]）
