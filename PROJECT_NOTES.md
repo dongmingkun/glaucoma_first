@@ -31,7 +31,16 @@
 - 无 TTA：EMA AUROC **0.9873** / AUPRC **0.8392**（B3 最好 0.9849/0.8047）
 - 4x TTA：**AUROC 0.98945 / AUPRC 0.85584**（单模就超过 B3 三方集成 0.98517/0.83270）
 
-ConvNeXt-Small@384（8 epoch）：TTA4 **AUROC 0.98994 / AUPRC 0.86371**（当前最强单模）
+ConvNeXt-Small@384（8 epoch）：TTA4 **AUROC 0.98994 / AUPRC 0.86371**
+ConvNeXt-Base@384（8 epoch）：TTA4 **AUROC 0.99117 / AUPRC 0.86439**（当前最强单模；注意无 TTA 的 blend 上 Base≈Small，TTA4 后才看出优势）
+
+**规模阶梯（AUPRC, TTA4）**：B3 0.8159 → Tiny 0.8558 → Small 0.8637 → Base 0.8644（Base 仅微增，容量接近饱和）
+**集成配置（valid, TTA4）**：
+| 配置 | AUROC | AUPRC | blend | maxbalACC |
+|---|---|---|---|---|
+| ens6（Small+0.4Tiny+0.2B3三方） | 0.99002 | 0.86999 | 93.00 | 95.71 |
+| **Base+Small+B3三方（1:1:0.5）** | 0.99098 | **0.87310** | **93.20** | 95.88 |
+| Base*1.2+Small+Tiny+0.4B3 | **0.99107** | 0.87044 | 93.08 | **96.23** |
 
 **分辨率结论（ConvNeXt 系列已到顶）**：
 - ConvNeXt-Tiny：@384 (0.85584) > @448 (0.84973)

@@ -12,6 +12,7 @@ RUNS = {
     "cx": r"D:\glaucoma_work\runs\convnext_tiny_384_1015_011832_cnxt_384",
     "cx448": r"D:\glaucoma_work\runs\convnext_tiny_448_1015_045435_cnxt_448",
     "cs": r"D:\glaucoma_work\runs\convnext_small_384_1015_060006_cnxs_384",
+    "cb": r"D:/glaucoma_work/runs/convnext_base_384_1015_113411_cnxb_384",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -119,3 +120,15 @@ report("cs+ens4 (1:0.6)", (probs["cs"] + 0.6 * (probs["cx"] + 0.5 * b3) / 1.5) /
 report("cs+cx+b3 best3 only(384/448)", (probs["cs"] + probs["cx"] + probs["384"] + probs["448"]) / 4)
 report("logit cs+cx+b3ens3", logit_mean([probs["cs"], probs["cx"], probs["384"], probs["448"], probs["512"]]))
 report("rank cs+cx+b3ens3", rank_avg([probs["cs"], probs["cx"], probs["384"], probs["448"], probs["512"]]))
+
+print(chr(10) + "--- 加入 ConvNeXt-Base ---")
+report("cb alone", probs["cb"])
+report("cb+cs", (probs["cb"] + probs["cs"]) / 2)
+report("cb+cs+cx", (probs["cb"] + probs["cs"] + probs["cx"]) / 3)
+cnx = (probs["cb"] + probs["cs"] + probs["cx"]) / 3
+report("cnx3+b3ens3 (1:0.5)", (cnx + 0.5 * b3) / 1.5)
+report("cnx3+b3ens3 (1:0.4)", (cnx + 0.4 * b3) / 1.4)
+report("cnx3+b3ens3 (1:0.3)", (cnx + 0.3 * b3) / 1.3)
+report("cb+cs+b3ens3 (1:1:0.5)", (probs["cb"] + probs["cs"] + 0.5 * b3) / 2.5)
+report("cb*1.2+cs+cx+0.4*b3", (1.2*probs["cb"] + probs["cs"] + probs["cx"] + 0.4*b3) / 3.6)
+report("ens6(cs1+cx0.4+b30.6) 对比", (probs["cs"] + 0.4*probs["cx"] + 0.6*b3) / 2.0)
