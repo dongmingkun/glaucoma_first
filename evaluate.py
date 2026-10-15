@@ -20,8 +20,8 @@ AGE_MEDIAN = 58.0
 
 
 class ValDS(Dataset):
-    def __init__(self, split, rows, img_size, flip=0, fixed_age=None):
-        self.dir = os.path.join(CACHE_ROOT, split)
+    def __init__(self, split, rows, img_size, flip=0, fixed_age=None, cache_root=None):
+        self.dir = os.path.join(cache_root or CACHE_ROOT, split)
         self.rows = rows
         self.img_size = img_size
         self.flip = flip
@@ -48,10 +48,10 @@ class ValDS(Dataset):
 
 
 @torch.no_grad()
-def predict(model, rows, split, img_size, flips, workers, fixed_age=None):
+def predict(model, rows, split, img_size, flips, workers, fixed_age=None, cache_root=None):
     total = np.zeros(len(rows))
     for fl in flips:
-        ds = ValDS(split, rows, img_size, flip=fl, fixed_age=fixed_age)
+        ds = ValDS(split, rows, img_size, flip=fl, fixed_age=fixed_age, cache_root=cache_root)
         dl = DataLoader(ds, batch_size=64, shuffle=False, num_workers=workers, pin_memory=True)
         for x, age, idx in dl:
             x, age = x.cuda(non_blocking=True), age.cuda(non_blocking=True)
@@ -86,7 +86,8 @@ def main():
     labels = np.array([r[2] for r in rows])
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[args.tta]
     fixed = AGE_MEDIAN if args.no_age else None
-    probs = predict(model, rows, args.split, img_size, flips, args.workers, fixed)
+    cache_root = (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
+    probs = predict(model, rows, args.split, img_size, flips, args.workers, fixed, cache_root=cache_root)
     auroc = roc_auc_score(labels, probs)
     auprc = average_precision_score(labels, probs)
     tag = "NO-AGE" if args.no_age else "full"

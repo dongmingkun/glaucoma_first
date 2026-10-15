@@ -33,7 +33,8 @@ def load_model(ckpt_path, use="auto"):
     m = FundusNet(arch, pretrained=False).cuda()
     m.load_state_dict(ckpt[use], strict=True)
     m.eval()
-    return m, ckpt.get("img_size", 384), use
+    cache_root = (ckpt.get("args") or {}).get("cache_root") or None
+    return m, ckpt.get("img_size", 384), use, cache_root
 
 
 def main():
@@ -58,8 +59,8 @@ def main():
         labels = np.array([r[2] for r in rows])
         all_probs = []
         for i, ck in enumerate(args.ckpt):
-            m, img_size, use = load_model(ck)
-            p = predict(m, rows, args.split, img_size, flips, args.workers)
+            m, img_size, use, cache_root = load_model(ck)
+            p = predict(m, rows, args.split, img_size, flips, args.workers, cache_root=cache_root)
             a = roc_auc_score(labels, p)
             ap_ = average_precision_score(labels, p)
             print(f"[{i}] {os.path.basename(os.path.dirname(ck))} use={use} img={img_size} "
@@ -88,8 +89,8 @@ def main():
         rows = load_rows("test")
         ens = np.zeros(len(rows))
         for i, ck in enumerate(args.ckpt):
-            m, img_size, use = load_model(ck)
-            p = predict(m, rows, "test", img_size, flips, args.workers)
+            m, img_size, use, cache_root = load_model(ck)
+            p = predict(m, rows, "test", img_size, flips, args.workers, cache_root=cache_root)
             ens += w[i] * p
             print(f"[{i}] {os.path.basename(os.path.dirname(ck))} test mean_prob={p.mean():.5f}", flush=True)
             del m

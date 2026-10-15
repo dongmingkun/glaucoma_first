@@ -22,6 +22,19 @@ SIZE = 512
 MARGIN = 1.0  # extra margin around detected fundus bbox (1.0 = none)
 
 
+def parse_args():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=OUT_ROOT, help="output cache dir")
+    ap.add_argument("--size", type=int, default=SIZE, help="output image size (square)")
+    ap.add_argument("--draft", type=int, default=768, help="JPEG draft decode size (>= size)")
+    ap.add_argument("--workers", type=int, default=8)
+    return ap.parse_args()
+
+
+ARGS = None  # set in main()
+
+
 def center_square(bbox, w, h, scale=1.02):
     x0, y0, x1, y1 = bbox
     cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
@@ -32,13 +45,13 @@ def center_square(bbox, w, h, scale=1.02):
     return nx0, ny0, nx1, ny1
 
 
-def process(args):
+def process(args, size=512, draft=768):
     src, dst, rel = args
     try:
         if os.path.exists(dst) and os.path.getsize(dst) > 5000:
             return (rel, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 2)  # 2 = skipped (already cached)
         im = Image.open(src)
-        im.draft("RGB", (768, 768))
+        im.draft("RGB", (draft, draft))
         im = im.convert("RGB")
         w, h = im.size
         arr = np.asarray(im)
@@ -61,7 +74,7 @@ def process(args):
         crop = arr[y0c:y1c, x0c:x1c]
         if pad_l or pad_t or pad_r or pad_b:
             crop = np.pad(crop, ((pad_t, pad_b), (pad_l, pad_r), (0, 0)), mode="constant")
-        out = Image.fromarray(crop).resize((SIZE, SIZE), Image.BICUBIC)
+        out = Image.fromarray(crop).resize((size, size), Image.BICUBIC)
         out.save(dst, quality=92, subsampling=1)
         return (rel, w, h, round(x0c), round(y0c), round(x1c), round(y1c), round(frac, 4),
                 round(float(gray.mean()), 1), 1)
@@ -69,7 +82,7 @@ def process(args):
         return (rel, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0)
 
 
-LOG = open(os.path.join(OUT_ROOT, "preprocess_run.log"), "a", encoding="utf-8")
+LOG = None
 
 
 def log(msg):
@@ -78,27 +91,33 @@ def log(msg):
 
 
 def main():
-    os.makedirs(OUT_ROOT, exist_ok=True)
+    global LOG
+    args = parse_args()
+    out_root = args.out
+    os.makedirs(out_root, exist_ok=True)
+    LOG = open(os.path.join(out_root, "preprocess_run.log"), "a", encoding="utf-8")
     tasks = []
     for s in SPLITS:
-        os.makedirs(os.path.join(OUT_ROOT, s), exist_ok=True)
+        os.makedirs(os.path.join(out_root, s), exist_ok=True)
         for p in sorted(glob.glob(os.path.join(DATA_ROOT, s, "*.[jJ][pP][gG]"))):
             base = os.path.basename(p)
             stem = base.rsplit(".", 1)[0]
-            dst = os.path.join(OUT_ROOT, s, stem + ".jpg")
+            dst = os.path.join(out_root, s, stem + ".jpg")
             tasks.append((p, dst, s + "/" + base))
-    print(f"total {len(tasks)} images to process", flush=True)
-    log(f"\n=== start {time.strftime('%H:%M:%S')} total={len(tasks)} ===")
+    print(f"total {len(tasks)} images to process -> {out_root} ({args.size}px, draft {args.draft})", flush=True)
+    log(f"\n=== start {time.strftime('%H:%M:%S')} total={len(tasks)} size={args.size} ===")
+    from functools import partial
+    fn = partial(process, size=args.size, draft=max(args.draft, args.size))
     rows = []
     t0 = time.time()
-    with Pool(8, maxtasksperchild=3000) as pool:
-        for i, r in enumerate(pool.imap_unordered(process, tasks, chunksize=16)):
+    with Pool(args.workers, maxtasksperchild=3000) as pool:
+        for i, r in enumerate(pool.imap_unordered(fn, tasks, chunksize=16)):
             rows.append(r)
             if (i + 1) % 2000 == 0:
                 el = time.time() - t0
                 log(f"  {i+1}/{len(tasks)}  {el:.0f}s  {(i+1)/el:.1f} img/s")
     rows.sort()
-    meta = os.path.join(OUT_ROOT, "meta_all.csv")
+    meta = os.path.join(out_root, "meta_all.csv")
     with open(meta, "w", newline="", encoding="utf-8") as f:
         wr = csv.writer(f)
         wr.writerow(["rel", "w", "h", "x0", "y0", "x1", "y1", "mask_frac", "mean_gray", "ok"])

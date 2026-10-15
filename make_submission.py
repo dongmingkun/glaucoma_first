@@ -41,10 +41,10 @@ AGE_MEDIAN = 58.0
 
 
 class DS(Dataset):
-    """Reads preprocessed 512 cache; flip index for TTA."""
+    """Reads preprocessed cache; flip index for TTA."""
 
-    def __init__(self, split, rows, img_size, flip=0):
-        self.dir = os.path.join(CACHE_ROOT, split)
+    def __init__(self, split, rows, img_size, flip=0, cache_root=None):
+        self.dir = os.path.join(cache_root or CACHE_ROOT, split)
         self.rows = rows
         self.img_size = img_size
         self.flip = flip
@@ -68,10 +68,10 @@ class DS(Dataset):
 
 
 @torch.no_grad()
-def predict_split(model, split, rows, img_size, flips, workers, bs=64):
+def predict_split(model, split, rows, img_size, flips, workers, bs=64, cache_root=None):
     total = np.zeros(len(rows), dtype=np.float64)
     for fl in flips:
-        ds = DS(split, rows, img_size, flip=fl)
+        ds = DS(split, rows, img_size, flip=fl, cache_root=cache_root)
         dl = DataLoader(ds, batch_size=bs, shuffle=False, num_workers=workers, pin_memory=True)
         for x, age, idx in dl:
             x = x.cuda(non_blocking=True)
@@ -129,7 +129,8 @@ def load_model(ckpt_path, device="cuda"):
     m = FundusNet(arch, pretrained=False).to(device)
     m.load_state_dict(ckpt[use], strict=True)
     m.eval()
-    return m, ckpt.get("img_size", 384), use, ckpt
+    cache_root = (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
+    return m, ckpt.get("img_size", 384), use, ckpt, cache_root
 
 
 def main():
@@ -158,13 +159,13 @@ def main():
 
     val_probs, test_probs = [], []
     for i, ck in enumerate(args.ckpt):
-        model, img_size, use, ckpt = load_model(ck)
-        pv = predict_split(model, "valid", valid_rows, img_size, flips, args.workers)
-        pt = predict_split(model, "test", test_rows, img_size, flips, args.workers)
+        model, img_size, use, ckpt, cache_root = load_model(ck)
+        pv = predict_split(model, "valid", valid_rows, img_size, flips, args.workers, cache_root=cache_root)
+        pt = predict_split(model, "test", test_rows, img_size, flips, args.workers, cache_root=cache_root)
         rm, tm = ranking_metrics(y, pv), threshold_metrics(y, pv)
         print(f"[{i}] {os.path.basename(os.path.dirname(ck))} use={use} img={img_size} "
               f"AUROC={rm['auroc']:.5f} AUPRC={rm['auprc']:.5f} balACC@0.5={tm['balacc']:.5f}", flush=True)
-        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, **rm, **tm})
+        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, "cache_root": cache_root, **rm, **tm})
         val_probs.append(pv)
         test_probs.append(pt)
         del model

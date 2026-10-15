@@ -21,8 +21,8 @@ from train import FundusNet, load_rows, age_tensor, CACHE_ROOT, CSV_ROOT
 
 
 class InferDS(Dataset):
-    def __init__(self, split, rows, img_size, flip=0):
-        self.dir = os.path.join(CACHE_ROOT, split)
+    def __init__(self, split, rows, img_size, flip=0, cache_root=None):
+        self.dir = os.path.join(cache_root or CACHE_ROOT, split)
         self.rows = rows
         self.img_size = img_size
         self.flip = flip  # 0 none, 1 hflip, 2 vflip, 3 both
@@ -80,7 +80,8 @@ def main():
         a_ema = ckpt.get("auroc_ema", -1)
         a_mod = ckpt.get("auroc", -1)
         use = "ema" if a_ema >= a_mod else "model"
-    print(f"ckpt={args.ckpt} arch={arch} img={img_size} use={use} "
+    cache_root = (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
+    print(f"ckpt={args.ckpt} arch={arch} img={img_size} use={use} cache={cache_root} "
           f"(auroc_ema={ckpt.get('auroc_ema')} auroc={ckpt.get('auroc')})")
 
     model = FundusNet(arch, pretrained=False).to(device)
@@ -91,7 +92,7 @@ def main():
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[args.tta]
     total = np.zeros(len(rows), dtype=np.float64)
     for fl in flips:
-        ds = InferDS(args.split, rows, img_size, flip=fl)
+        ds = InferDS(args.split, rows, img_size, flip=fl, cache_root=cache_root)
         dl = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                         pin_memory=True, persistent_workers=args.workers > 0, prefetch_factor=4)
         p = predict(model, dl, device)

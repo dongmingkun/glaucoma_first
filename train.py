@@ -116,8 +116,8 @@ def age_tensor(age):
 
 
 class FundusDS(Dataset):
-    def __init__(self, split, rows, img_size=384, train=True):
-        self.dir = os.path.join(CACHE_ROOT, split)
+    def __init__(self, split, rows, img_size=384, train=True, cache_root=None):
+        self.dir = os.path.join(cache_root or CACHE_ROOT, split)
         self.rows = rows
         self.img_size = img_size
         self.train = train
@@ -307,6 +307,8 @@ def evaluate(model, loader, device, crit):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arch", default="efficientnet_b3", choices=list(ARCH_INFO))
+    ap.add_argument("--cache-root", default=CACHE_ROOT,
+                    help=r"image cache dir; use D:\glaucoma_work\cache768 for high-res experiments")
     ap.add_argument("--img-size", type=int, default=384)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=32)
@@ -358,9 +360,9 @@ def main():
     npos = sum(1 for r in train_rows if r[2] == 1)
     print(f"train rows={len(train_rows)} pos={npos} ({npos/max(1,len(train_rows)):.4f})")
 
-    ds_tr = MixedDS(train_rows, args.img_size) if args.train_on_all else \
-        FundusDS("train", train_rows, args.img_size, train=True)
-    ds_va = FundusDS("valid", val_rows, args.img_size, train=False)
+    ds_tr = MixedDS(train_rows, args.img_size, cache_root=args.cache_root) if args.train_on_all else \
+        FundusDS("train", train_rows, args.img_size, train=True, cache_root=args.cache_root)
+    ds_va = FundusDS("valid", val_rows, args.img_size, train=False, cache_root=args.cache_root)
     if args.loader == "threads":
         dl_tr = ThreadLoader(ds_tr, args.batch_size, nthreads=args.threads, shuffle=True, drop_last=True)
         dl_va = ThreadLoader(ds_va, max(32, args.batch_size), nthreads=args.threads, qsize=96,
@@ -482,9 +484,10 @@ def main():
 class MixedDS(Dataset):
     """Train-on-all: rows from train+valid, resolved by existing cache path."""
 
-    def __init__(self, rows, img_size=384):
+    def __init__(self, rows, img_size=384, cache_root=None):
         self.rows = rows
         self.img_size = img_size
+        self.cache_root = cache_root or CACHE_ROOT
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
         self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 
@@ -493,8 +496,8 @@ class MixedDS(Dataset):
 
     def __getitem__(self, i):
         stem, age, label = self.rows[i]
-        p1 = os.path.join(CACHE_ROOT, "train", stem + ".jpg")
-        p2 = os.path.join(CACHE_ROOT, "valid", stem + ".jpg")
+        p1 = os.path.join(self.cache_root, "train", stem + ".jpg")
+        p2 = os.path.join(self.cache_root, "valid", stem + ".jpg")
         path = p1 if os.path.exists(p1) else p2
         img = Image.open(path).convert("RGB")
         s = self.img_size
