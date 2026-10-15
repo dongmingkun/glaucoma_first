@@ -210,7 +210,13 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - [ ] 首版 submission.csv 尽早产出（每天限 2 次提交，先用掉 1 次探分）
 - [ ] 提升方向：B4@448、train+valid 全量重训、双模型集成（T4 上两模型 ~80ms 仍满足 100ms、总大小 <500MB）
 - [ ] 复赛模型打包：需兼容 torch 2.10 + Python 3.12（本地 3.11 的 checkpoint 通用，但打包代码要在 3.12 下测）
-- [ ] 规则风险：仅允许主办方数据 → ImageNet 预训练权重属于通用初始化而非外部标注医学数据，行业惯例允许；如需绝对保守可训练 from scratch（预计掉点明显）
+- [x] 规则风险：仅允许主办方数据 → ImageNet 预训练权重属于通用初始化而非外部标注医学数据，行业惯例允许；`--pretrained 0` 已支持 from-scratch 训练（#7）
+
+## 🔒 from-scratch 合规备选（#7，P2 风险对冲）
+- **现状**：ImageNet 预训练权重属于**通用初始化**（非外部标注医学数据），行业惯例允许，默认保留 `--pretrained 1`。
+- **备选**：`python train.py --arch efficientnet_b3 --img-size 384 --pretrained 0 --tag scratch_probe` 可从头训练。
+- **预期代价**（定量待 GPU 机器实测回填）：from-scratch 从头训练掉点明显（眼底图 + 3.2% 正类极不平衡 + 仅 5 万张），预计需 **2-3 倍 epoch** 且 AUROC 低 0.01~0.03。
+- **触发条件**：仅在主办方**明确禁止**通用预训练权重时才启用；否则维持 pretrained。
 
 ## 协作（GitHub）
 - 仓库（私有）：https://github.com/dongmingkun/glaucoma_first
@@ -232,3 +238,15 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - 分工（2026-10-14，待两位接受仓库邀请；如需调整在对应 Issue 回复）：
   - @Yulingling-sc：训练方向 → #2 448 集成、#3 全量重训、#4 B4 实验、#8 探索池
   - @JiahaoChen-star-JJ：评估/工程方向 → #1 评分口径、#5 复赛镜像、#6 提交台账、#7 合规备选
+
+## 提交台账与实验记录规范（#6）
+- 提交台账：`SUBMISSIONS_LOG.md`（列：日期/提交人/文件/md5/来源/TTA/校准/LB/结论）；提交前登记、提交后 10 分钟回填。
+- 权重命名规范：`{arch}_{size}_{月日}_ep{epoch}_valid{auroc4位}.pt`，例 `b3_448_1015_ep3_valid0.9861.pt`；大文件不入库，走 Release 附件/群文件。
+- 现有 run 清单（valid 指标，来源集成报告）：
+
+| run | arch | size | AUROC | AUPRC |
+|---|---|---|---|---|
+| `convnext_tiny_384_1015_011832_cnxt_384` | convnext_tiny | 384 | 0.98945 | 0.85584 |
+| `efficientnet_b3_384_1014_194338_b3_384_cont` | efficientnet_b3 | 384 | 0.98504 | 0.81592 |
+| `efficientnet_b3_448_1014_221755_b3_448` | efficientnet_b3 | 448 | 0.98210 | 0.82672 |
+| `efficientnet_b3_512_1014_233847_b3_512` | efficientnet_b3 | 512 | 0.98370 | 0.81415 |
