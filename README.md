@@ -45,3 +45,4 @@ python infer.py --ckpt <best.pt> --split test --tta 4 --out submission.csv
 - 任务清单与分工都在 **Issues** 页；开始前先认领对应工单，完成后回填数字与结论
 - 改动走分支 + PR（`main` 保持可用）；实验结论（无论成败）都写进对应 Issue
 - 大文件（权重、数据、缓存）不入库，通过网盘/本机目录分发
+- 提交台账与权重命名规范见 `SUBMISSIONS_LOG.md`（#6）；权重命名 `{arch}_{size}_{月日}_ep{epoch}_valid{auroc}.pt`

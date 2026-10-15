@@ -1,15 +1,44 @@
 # 提交台账（SUBMISSIONS LOG）
 
 > 每次向比赛平台提交后在此登记一行。线上分数是唯一最终裁判，如实记录（含失败）。
-> 提交前先在对应 Issue 登记；任何"预期分"都只是本地估计。
+> 维护规范见 Issue #6。
 
 ## 提交记录
 
-| 日期 | 提交人 | 文件名 | 内容（模型/集成/校准） | 本地预期分（四口径） | 线上分数 | 结论 |
-|---|---|---|---|---|---|---|
-| 2026-10-14 | @dongmingkun | `submission.csv` | B3@384 4x TTA，无校准 | balACC@0.5=88.83 / 混合=90.05 / AUROC=98.50 / AUPRC=81.59 | **89.20**（第 34 名） | 疑似阈值敏感口径，待 #1 A/B 验证 |
-| 2026-10-15 | @dongmingkun | `submission_20251015_ens4_cal.csv` | ConvNeXt-Tiny + B3×3 四模型集成 + 校准 | balACC@0.5=95.54 / 混合=92.68 / AUROC=98.98 / AUPRC=86.37 | **94.07（第 3 名）** | 两候选并存：balACC 差 −1.47、混合差 +1.39，均在 ±1.4 抽样噪声内 |
-| 2026-10-16（计划） | @dongmingkun | `submission_20251016_ens6_cal.csv` | 六模型集成（Small@512 on 768缓存 + Tiny + Base + B3×3）+ 校准 | balACC@0.5=95.84 / 混合=93.42 / AUROC=99.11 / AUPRC=87.73 | 待回填 | 第三数据点，用于区分两候选 |
+| 日期 | 提交人 | 文件 | md5(前8位) | 来源 ckpt/run | TTA | 是否校准 | LB 分数 | 结论 |
+|---|---|---|---|---|---|---|---|---|
+| 2026-10-14 | @dongmingkun | `submission.csv` | `6303c195` | `efficientnet_b3_384_1014_194338_b3_384_cont` | 4x | 否 | **89.20**（第 34 名） | 疑似阈值敏感口径，待 #1 A/B 验证 |
+| 2026-10-15 | @dongmingkun | `submission_20251015_ens4_cal.csv` | `2f065a39` | ConvNeXt-Tiny + B3×3 四模型集成 | 4x | 是 | **94.07（第 3 名）** | 两候选并存：balACC 差 −1.47、混合差 +1.39，均在 ±1.4 抽样噪声内 |
+| 2026-10-16（计划） | @dongmingkun | `submission_20251016_ens6_cal.csv` | 待生成 | 六模型集成（Small@512 on 768缓存 + Tiny + Base + B3×3） | 4x | 是 | 待回填 | 第三数据点，用于区分两候选 |
+
+> 备注：`submission_cal.csv`（`f49f2242`，B3@384 单模型校准版）与 `submission_20251015_ens3_cal.csv`（`d7f50bc4`，B3 三方集成校准版）为备选产物，未提交。
+
+## 提交流程规则（#6）
+
+1. **提交前**：先在上表登记一行「计划提交」，标注文件名 + md5 + 来源 + 预期分。
+2. **提交后**：10 分钟内回填 LB 分数与结论。
+3. **再次提交前**：确认上一次结果已回填，避免重复提交浪费配额（每天仅 1 次）。
+4. **任何人不手工改 CSV**：要改就改 checkpoint/权重，重跑 `make_submission.py`。
+
+## 权重备份命名规范（#6）
+
+格式：`{arch}_{size}_{月日}_ep{epoch}_valid{auroc4位}.pt`
+
+示例：`b3_448_1015_ep3_valid0.9861.pt`
+
+规则：
+- `auroc` 取 4 位小数（如 0.9861），用于一眼识别模型质量；
+- 交付物 = `best.pt` + 一行验证集指标（AUROC/AUPRC）；
+- 大文件（`*.pt`）**不入库**，通过 GitHub Release 附件或群文件共享。
+
+## 现有 run 清单（#6，来源 PROJECT_NOTES + 集成报告）
+
+| run 目录 | arch | img_size | AUROC | AUPRC |
+|---|---|---|---|---|
+| `convnext_tiny_384_1015_011832_cnxt_384` | convnext_tiny | 384 | 0.98945 | 0.85584 |
+| `efficientnet_b3_384_1014_194338_b3_384_cont` | efficientnet_b3 | 384 | 0.98504 | 0.81592 |
+| `efficientnet_b3_448_1014_221755_b3_448` | efficientnet_b3 | 448 | 0.98210 | 0.82672 |
+| `efficientnet_b3_512_1014_233847_b3_512` | efficientnet_b3 | 512 | 0.98370 | 0.81415 |
 
 ## 口径判定对照（#1）
 

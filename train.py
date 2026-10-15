@@ -322,6 +322,8 @@ def main():
     ap.add_argument("--loader", default="threads", choices=["threads", "workers"])
     ap.add_argument("--threads", type=int, default=3)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--pretrained", type=int, default=1, choices=[0, 1],
+                    help="use ImageNet pretrained backbone (0 = train from scratch)")
     ap.add_argument("--subset", type=int, default=0, help="train on random subset (smoke test)")
     ap.add_argument("--max-steps-per-epoch", type=int, default=0)
     ap.add_argument("--out-dir", default=None)
@@ -375,7 +377,7 @@ def main():
                            num_workers=max(2, args.workers // 2), pin_memory=True,
                            persistent_workers=False, prefetch_factor=2)
 
-    model = FundusNet(args.arch, pretrained=True).to(device)
+    model = FundusNet(args.arch, pretrained=bool(args.pretrained)).to(device)
     if args.init_from:
         sd = torch.load(args.init_from, map_location="cpu", weights_only=False)
         if isinstance(sd, dict) and ("ema" in sd or "model" in sd):
