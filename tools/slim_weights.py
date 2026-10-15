@@ -97,7 +97,8 @@ def main():
 
     out = args.out or os.path.join(os.path.dirname(args.inp), default_out_name(ckpt, use))
     out_ckpt = {
-        "state_dict": sd_fp16,
+        "state_dict": sd_fp16,          # 通用键（本工具/其他脚本）
+        use: sd_fp16,                    # 与 train.py / predict.py 的读取约定对齐（ckpt[use]）
         "arch": arch,
         "img_size": img_size,
         "use": use,
