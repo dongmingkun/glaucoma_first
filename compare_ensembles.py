@@ -11,6 +11,7 @@ RUNS = {
     "512": r"D:\glaucoma_work\runs\efficientnet_b3_512_1014_233847_b3_512",
     "cx": r"D:\glaucoma_work\runs\convnext_tiny_384_1015_011832_cnxt_384",
     "cx448": r"D:\glaucoma_work\runs\convnext_tiny_448_1015_045435_cnxt_448",
+    "cs": r"D:\glaucoma_work\runs\convnext_small_384_1015_060006_cnxs_384",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -102,3 +103,19 @@ report("cx*1.5+cx448+b3ens3(1:0.5)", (1.5 * probs["cx"] + probs["cx448"] + 0.5 *
 report("cx+cx448+384+448+512 (等权)", (probs["cx"] + probs["cx448"] + probs["384"] + probs["448"] + probs["512"]) / 5)
 report("cx2+cx4481+b3 (2:1:1)", (2 * probs["cx"] + probs["cx448"] + b3) / 4)
 report("logit cx+cx448+b3ens3", logit_mean([probs["cx"], probs["cx448"], probs["384"], probs["448"], probs["512"]]))
+
+print("\n--- 六模型（加入 ConvNeXt-Small）---")
+report("cs alone", probs["cs"])
+report("cs+cx", (probs["cs"] + probs["cx"]) / 2)
+report("cs+cx+b3ens3 (1:1:0.5)", (probs["cs"] + probs["cx"] + 0.5 * b3) / 2.5)
+report("cs+cx+b3ens3 (1:0.7:0.5)", (probs["cs"] + 0.7 * probs["cx"] + 0.5 * b3) / 2.2)
+report("cs*1.5+cx+b3ens3", (1.5 * probs["cs"] + probs["cx"] + 0.5 * b3) / 3)
+report("cs+cx+b3ens3 (1:1:1)", (probs["cs"] + probs["cx"] + b3) / 3)
+report("cs+cx+cx448+b3ens3 (1:1:1:0.5)", (probs["cs"] + probs["cx"] + probs["cx448"] + 0.5 * b3) / 3.5)
+report("cs+cx+cx448+b3ens3 (1:1:1:1)", (probs["cs"] + probs["cx"] + probs["cx448"] + b3) / 4)
+report("cs+ens4 (1:1)", (probs["cs"] + (probs["cx"] + 0.5 * b3) / 1.5) / 2)
+report("cs+ens4 (1:0.8)", (probs["cs"] + 0.8 * (probs["cx"] + 0.5 * b3) / 1.5) / 1.8)
+report("cs+ens4 (1:0.6)", (probs["cs"] + 0.6 * (probs["cx"] + 0.5 * b3) / 1.5) / 1.6)
+report("cs+cx+b3 best3 only(384/448)", (probs["cs"] + probs["cx"] + probs["384"] + probs["448"]) / 4)
+report("logit cs+cx+b3ens3", logit_mean([probs["cs"], probs["cx"], probs["384"], probs["448"], probs["512"]]))
+report("rank cs+cx+b3ens3", rank_avg([probs["cs"], probs["cx"], probs["384"], probs["448"], probs["512"]]))

@@ -296,7 +296,11 @@ def evaluate(model, loader, device, crit):
     labels = torch.cat(labels).numpy()
     auroc = roc_auc_score(labels, probs)
     auprc = average_precision_score(labels, probs)
-    return auroc, auprc, sum(losses) / len(labels), probs, labels
+    # best balanced accuracy over all thresholds (relevant if the LB metric is threshold-based)
+    from sklearn.metrics import roc_curve
+    fpr, tpr, _ = roc_curve(labels, probs)
+    balacc_max = float(np.max(0.5 * (tpr + (1 - fpr))))
+    return auroc, auprc, sum(losses) / len(labels), probs, labels, balacc_max
 
 
 def main():
@@ -448,14 +452,14 @@ def main():
             print(f"epoch {epoch}: train_loss={train_loss:.4f} ({time.time()-t0:.0f}s) saved last.pt")
             continue
 
-        auroc, auprc, vloss, _, _ = evaluate(model, dl_va, device, crit)
+        auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit)
         backup = ema.apply_to(model)
-        auroc_e, auprc_e, vloss_e, _, _ = evaluate(model, dl_va, device, crit)
+        auroc_e, auprc_e, vloss_e, _, _, balmax_e = evaluate(model, dl_va, device, crit)
         model.load_state_dict(backup)
         lr_now = opt.param_groups[0]["lr"]
         print(f"epoch {epoch}: train={train_loss:.4f} val={vloss:.4f} AUROC={auroc:.4f} AUPRC={auprc:.4f} "
-              f"| EMA AUROC={auroc_e:.4f} AUPRC={auprc_e:.4f} ({time.time()-t0:.0f}s) "
-              f"commit={proc_commit_mb():.0f}MB", flush=True)
+              f"balmax={balmax:.4f} | EMA AUROC={auroc_e:.4f} AUPRC={auprc_e:.4f} balmax={balmax_e:.4f} "
+              f"({time.time()-t0:.0f}s) commit={proc_commit_mb():.0f}MB", flush=True)
         with open(log_path, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow([epoch, round(train_loss, 5), round(vloss, 5), round(auroc, 5), round(auprc, 5),
                                     round(auroc_e, 5), round(auprc_e, 5), round(lr_now, 8), round(time.time() - t0, 1)])
