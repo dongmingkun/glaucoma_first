@@ -13,6 +13,7 @@ RUNS = {
     "cx448": r"D:\glaucoma_work\runs\convnext_tiny_448_1015_045435_cnxt_448",
     "cs": r"D:\glaucoma_work\runs\convnext_small_384_1015_060006_cnxs_384",
     "cb": r"D:/glaucoma_work/runs/convnext_base_384_1015_113411_cnxb_384",
+    "hi": r"D:/glaucoma_work/runs/convnext_small_512_1015_170341_cs_hi512",
 }
 VALID_CSV = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first\valid.csv"
 
@@ -132,3 +133,13 @@ report("cnx3+b3ens3 (1:0.3)", (cnx + 0.3 * b3) / 1.3)
 report("cb+cs+b3ens3 (1:1:0.5)", (probs["cb"] + probs["cs"] + 0.5 * b3) / 2.5)
 report("cb*1.2+cs+cx+0.4*b3", (1.2*probs["cb"] + probs["cs"] + probs["cx"] + 0.4*b3) / 3.6)
 report("ens6(cs1+cx0.4+b30.6) 对比", (probs["cs"] + 0.4*probs["cx"] + 0.6*b3) / 2.0)
+
+
+print(chr(10) + "--- 高分辨率成员 hi512 ---")
+report("hi alone", probs["hi"])
+report("cb+hi+b3 (1:1:0.5)", (probs["cb"] + probs["hi"] + 0.5*b3) / 2.5)
+report("cb+cs+hi+b3 (1:1:1:0.5)", (probs["cb"] + probs["cs"] + probs["hi"] + 0.5*b3) / 3.5)
+report("cb+hi+0.5cs+b3 (1:1:0.5:0.5)", (probs["cb"] + probs["hi"] + 0.5*probs["cs"] + 0.5*b3) / 3.0)
+report("hi+cs+b3 (1:1:0.5)", (probs["hi"] + probs["cs"] + 0.5*b3) / 2.5)
+report("hi*1.5+cb+b3 (1.5:1:0.5)", (1.5*probs["hi"] + probs["cb"] + 0.5*b3) / 3.0)
+report("对比: cb+cs+b3 (1:1:0.5)", (probs["cb"] + probs["cs"] + 0.5*b3) / 2.5)
