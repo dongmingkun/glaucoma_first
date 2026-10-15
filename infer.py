@@ -77,11 +77,18 @@ def main():
     img_size = args.img_size or ckpt["img_size"]
     use = args.use
     if use == "auto":
-        a_ema = ckpt.get("auroc_ema", -1)
-        a_mod = ckpt.get("auroc", -1)
-        use = "ema" if a_ema >= a_mod else "model"
+        forced = ckpt.get("use")
+        if forced in ("ema", "model"):
+            use = forced          # train-on-all checkpoints carry an explicit choice
+        else:
+            a_ema = ckpt.get("auroc_ema", -1)
+            a_mod = ckpt.get("auroc", -1)
+            use = "ema" if a_ema >= a_mod else "model"
     print(f"ckpt={args.ckpt} arch={arch} img={img_size} use={use} "
           f"(auroc_ema={ckpt.get('auroc_ema')} auroc={ckpt.get('auroc')})")
+    if ckpt.get("train_on_all") and args.split in ("train", "valid"):
+        print("!! WARNING: checkpoint was trained with --train-on-all. Rows from this split were "
+              "IN the training set, so the AUROC/AUPRC below are contaminated -- do not report them.")
 
     model = FundusNet(arch, pretrained=False).to(device)
     sd = ckpt["ema"] if use == "ema" else ckpt["model"]

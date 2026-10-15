@@ -19,17 +19,19 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from evaluate import predict
-from train import FundusNet, load_rows
+from train import FundusNet, load_rows, CSV_ROOT
 from sklearn.metrics import roc_auc_score, average_precision_score
-
-CSV_ROOT = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first"
 
 
 def load_model(ckpt_path, use="auto"):
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     arch = ckpt.get("arch", "efficientnet_b3")
     if use == "auto":
-        use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
+        forced = ckpt.get("use")
+        if forced in ("ema", "model"):
+            use = forced          # train-on-all checkpoints carry an explicit choice
+        else:
+            use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
     m = FundusNet(arch, pretrained=False).cuda()
     m.load_state_dict(ckpt[use], strict=True)
     m.eval()

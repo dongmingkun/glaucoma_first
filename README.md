@@ -19,6 +19,9 @@
 | `audit_data.py` / `md5_dupes.py` | 数据审计、重复图检测 |
 | `submit_pkg/` | 复赛自包含提交包（`predict.py` + 权重 + 说明） |
 | `glaucoma_first/` | 官方数据 CSV（**图片目录不入库**，从比赛平台下载） |
+| `paths.py` | 统一路径解析（环境变量 → 仓库布局 → 旧硬编码），所有脚本共享 |
+| `check_train_on_all.py` | `--train-on-all` 产物的验收检查（Issue #3） |
+| `docs/TRAIN_ON_ALL.md` | 全量重训操作手册与验收标准（Issue #3） |
 | `bench*.py` | 吞吐/内存基准脚本 |
 
 ## 快速开始
