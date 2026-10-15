@@ -79,6 +79,20 @@ $VENV make_submission.py --ckpt runs/A/best.pt runs/B/best.pt --weights 1 0.8 --
 | 指标报告 | Issue 回复 | 一行：`exp / arch / img_size / AUROC / AUPRC / balACC@0.5 / epoch 用时 / 训练机配置` |
 | 权重文件怎么共享 | GitHub Release 附件 或 群文件 | **不要直接 commit 到仓库**（93MB/个，会撑爆 repo） |
 
+### 4.1 如何取用队友权重（#14）
+
+1. 打开 `docs/WEIGHTS.md`，找到需要的权重 → 复制下载链接（或群文件）。
+2. 下载后放到本机 `runs/<同名目录>/best.pt`，或任意路径，训练/推理时用绝对路径引用：
+   ```bash
+   # 热启动（用队友权重继续训练）
+   python train.py ... --init-from "D:/glaucoma_work/runs/<exp>/best.pt"
+   # 单模型评估
+   python evaluate.py --ckpt "D:/glaucoma_work/runs/<exp>/best.pt" --tta 4
+   # 集成/出提交
+   python make_submission.py --ckpt runs/A/best.pt runs/B/best.pt --tta 4 --calibrate
+   ```
+3. **复赛包用瘦身权重**：跑 `python tools/slim_weights.py --in <best.pt>` 生成 fp16 单份权重（`<arch>_<img>_<cache>_<MMDD>_auprc<0.xxxx>.pt`），体积减半、满足 ≤500MB 红线（预算表见 `docs/WEIGHTS.md`）。
+
 ## 5. 提交台账（#6 工单维护）
 
 每次提交后在 Issue #6 追加一行：
