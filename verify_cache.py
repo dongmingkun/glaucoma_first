@@ -6,8 +6,8 @@ from multiprocessing import Pool
 
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 
-CACHE = r"D:\glaucoma_work\cache512"
-CSV_ROOT = r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first"
+CACHE = os.environ.get("GLAUCOMA_CACHE", r"D:\glaucoma_work\cache512")
+CSV_ROOT = os.environ.get("GLAUCOMA_CSV", r"C:\Users\Kevin\Desktop\glaucoma_first\glaucoma_first")
 SPLITS = ["train", "valid", "test"]
 
 
