@@ -246,6 +246,20 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - 两个理由：① 与"仅可用主办方数据"规则冲突（风险远高于 ImageNet 通用初始化）；② ViT-L 体积（fp32 ≈1.2GB / fp16 ≈0.6GB）超 500MB 复赛红线。
 - 提交模型一律为 ConvNeXt / EfficientNet 系列。本决策已同步写入 `SUBMISSIONS_LOG.md` 提交流程规则与 `submit_pkg/README.md`。
 
+### 消融结题（#34，2026-10-16）
+首 epoch 即停（合规 + 显存 + 时间三重约束），**结论：不采用，不再投入**。
+
+| 项 | 结果 |
+|---|---|
+| 权重 | HF 未 gated 镜像 `bitfount/RETFound_MAE`（timm 296 键，missing=0/unexpected=0） |
+| 微调设置 | ViT-L/16 @224，bs6+accum8，lr 2e-5 / head 5e-4，8ep 计划 |
+| epoch1 结果 | AUROC **0.9265** / AUPRC **0.3402**（EMA 0.9402 / 0.4675） |
+| 对照 | 同期 ConvNeXt-Tiny@384 epoch1 = AUROC 0.9762 / AUPRC 0.7628 |
+| 显存 | 峰值 **8.4GB > 物理 8.15GB**（溢到共享内存，验证阶段风险高） |
+
+- **不采用三理由**：① 合规上不能进提交；② 性能远低于 ConvNeXt 系列（epoch1 AUPRC 0.34 vs 0.76）；③ 官方配方需 50ep + 层级衰减，本机 20+ 小时才可能追平，且显存随时溢出。
+- **建议（已执行）**：停止 RetFound 投入，算力回收至 Small@640（cs_hi640d）与集成扩充（#35）。提分主线继续「高分辨率成员 + 集成 + 校准」。
+
 ## 协作（GitHub）
 - 仓库（私有）：https://github.com/dongmingkun/glaucoma_first
 - 后续工作已拆成工单（Issues），按优先级：
