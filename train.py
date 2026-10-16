@@ -58,7 +58,7 @@ def build_retfound(img_size=224, log=True, drop_path=0.1):
     """
     import timm
     m = timm.create_model("vit_large_patch16_224", pretrained=False, num_classes=0,
-                          global_pool="avg", dynamic_img_size=True, img_size=img_size,
+                          global_pool="token", dynamic_img_size=True, img_size=img_size,
                           drop_path_rate=drop_path)
     if not os.path.isfile(RETFOUND_CKPT):
         raise FileNotFoundError(f"RETFound 权重不存在: {RETFOUND_CKPT}（先用 tools/download_retfound.py 下载）")
@@ -96,7 +96,7 @@ class FundusNet(nn.Module):
             if self.features is None:
                 import timm
                 self.features = timm.create_model("vit_large_patch16_224", pretrained=False,
-                                                  num_classes=0, global_pool="avg",
+                                                  num_classes=0, global_pool="token",
                                                   dynamic_img_size=True)
             self.avgpool = None      # ViT 走 forward_head 池化
             self.norm = None
@@ -340,7 +340,7 @@ def evaluate(model, loader, device, crit):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arch", default="efficientnet_b3", choices=list(ARCH_INFO))
+    ap.add_argument("--arch", default="efficientnet_b3", choices=list(ARCH_INFO) + ["retfound_vitl"])
     ap.add_argument("--img-size", type=int, default=384)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=32)
