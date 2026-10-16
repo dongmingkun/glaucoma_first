@@ -74,3 +74,31 @@ python predict.py --images /path/test_images --csv /path/test.csv \
 - 延迟红线对齐 README: 3模型TTA4 ~155ms 超标 / 2模型TTA4 ~115ms 临界 / 2模型TTA1 ~75ms 推荐
 - 实测侧待执行(官方镜像 T4/py3.12): 推荐配置 2模型+TTA1+烘焙校准, 验收清单见 docs/ISSUE_5.md
 ```
+
+## 5. 本地预验收（#33，2026-10-16，无 T4 可做部分）
+
+> 复赛包 `submit_pkg/predict.py` 在无 T4 条件下可做的全部预验收，把风险提前挤出。
+
+### 已通过项（本机静态 + 逻辑验证）
+
+| # | 项 | 结果 | 依据 |
+|---|---|---|---|
+| 1 | py3.12 语法兼容 | ✅ | `py_compile` 通过；无 3.12 移除/弃用 API（distutils / imp / 旧 typing 别名等均未出现） |
+| 2 | 依赖自包含 | ✅ | 仅 `torch / torchvision / PIL / numpy`，官方镜像全部自带 |
+| 3 | 裁剪档位三级回退（#28） | ✅ | `infer_cache_size` 逻辑单测 6 例全过：L1 `cache_size` → L2 `args.cache_root` 含 768 → L3 文件名含 `cache768` → 默认 512 |
+| 4 | 体积预算 | ✅ | 最优集成 fp16 瘦身 **424MB ≤ 500MB**（余量 ~76MB，见 docs/WEIGHTS.md） |
+| 5 | 命名规范 | ✅ | `--out` 默认 `submission.csv`，符合平台命名要求 |
+| 6 | 输出格式 | ✅ | 三列 `Image_name,Probability,Pred_Label`；`Pred_Label = (p>=0.5)`；概率裁剪在 [0,1] |
+
+### 必须 T4 / 权重就绪才能做的剩余项
+
+| # | 项 | 阻塞原因 |
+|---|---|---|
+| 1 | 瘦身权重实际加载（20 张小样本格式自检） | 需 Release fp16 权重（weights-1016）+ 解压后 test 图片 |
+| 2 | 延迟实测 p50/p95（≥100 张） | 需 T4 环境；4090D 实测无法按 0.7–1.0x 外推 T4 |
+| 3 | 官方镜像多模型 + 烘焙校准端到端 | 需 T4 / py3.12 / torch 2.10.0+cu128 官方镜像 |
+| 4 | 概率一致性 ±1e-3（去重+张量翻转 vs 逐图） | 需权重 + 数据 + GPU |
+
+### 结论
+
+本地可做的预验收全部通过，**未发现需提 PR 的兼容性问题**（predict.py 已封板：#18 多模型 / #20 延迟优化 / #28 三级回退均在 main）。剩余 4 项为「待 T4 / 待权重」的运行时验证，已列入上表。
