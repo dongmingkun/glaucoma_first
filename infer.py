@@ -64,6 +64,8 @@ def main():
     ap.add_argument("--ckpt", required=True)
     ap.add_argument("--split", default="test")
     ap.add_argument("--img-size", type=int, default=0, help="0 = use ckpt value")
+    ap.add_argument("--img-sizes", type=int, nargs="+", default=None,
+                    help="multi-scale TTA: average over several input scales, e.g. 384 448")
     ap.add_argument("--tta", type=int, default=4, help="number of flip variants 1/2/4")
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=64)
@@ -97,15 +99,19 @@ def main():
 
     rows = load_rows(args.split)
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[args.tta]
-    total = np.zeros(len(rows), dtype=np.float64)
-    for fl in flips:
-        ds = InferDS(args.split, rows, img_size, flip=fl, cache_root=cache_root)
-        dl = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
-                        pin_memory=True, persistent_workers=args.workers > 0, prefetch_factor=4)
-        p = predict(model, dl, device)
-        total += p
-        print(f"  flip={fl} mean_prob={p.mean():.5f}", flush=True)
-    probs = total / len(flips)
+    scales = args.img_sizes or [img_size]
+    probs = np.zeros(len(rows), dtype=np.float64)
+    for s in scales:
+        total = np.zeros(len(rows), dtype=np.float64)
+        for fl in flips:
+            ds = InferDS(args.split, rows, s, flip=fl, cache_root=cache_root)
+            dl = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
+                            pin_memory=True, persistent_workers=args.workers > 0, prefetch_factor=4)
+            p = predict(model, dl, device)
+            total += p
+        probs += total / len(flips)
+        print(f"  scale={s} mean_prob={(total/len(flips)).mean():.5f}", flush=True)
+    probs /= len(scales)
 
     if args.split in ("train", "valid"):
         from sklearn.metrics import roc_auc_score, average_precision_score
