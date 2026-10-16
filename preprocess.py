@@ -25,6 +25,8 @@ MARGIN = 1.0  # extra margin around detected fundus bbox (1.0 = none)
 def parse_args():
     import argparse
     ap = argparse.ArgumentParser()
+    ap.add_argument("--data-root", default=DATA_ROOT,
+                    help="raw image dir containing train/valid/test subfolders")
     ap.add_argument("--out", default=OUT_ROOT, help="output cache dir")
     ap.add_argument("--size", type=int, default=SIZE, help="output image size (square)")
     ap.add_argument("--draft", type=int, default=768, help="JPEG draft decode size (>= size)")
@@ -99,7 +101,7 @@ def main():
     tasks = []
     for s in SPLITS:
         os.makedirs(os.path.join(out_root, s), exist_ok=True)
-        for p in sorted(glob.glob(os.path.join(DATA_ROOT, s, "*.[jJ][pP][gG]"))):
+        for p in sorted(glob.glob(os.path.join(args.data_root, s, "*.[jJ][pP][gG]"))):
             base = os.path.basename(p)
             stem = base.rsplit(".", 1)[0]
             dst = os.path.join(out_root, s, stem + ".jpg")
