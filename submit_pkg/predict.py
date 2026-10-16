@@ -141,14 +141,23 @@ def clean_age(v):
     return min(max(a, 10.0), 100.0)
 
 
-def infer_cache_size(ckpt):
-    """Infer the preprocessing cache size (512 vs 768) from the checkpoint's
-    training --cache-root, so each model uses its own training-time crop."""
-    args = ckpt.get("args") if isinstance(ckpt, dict) else None
-    cr = ""
-    if isinstance(args, dict):
-        cr = str(args.get("cache_root", ""))
-    if "768" in cr:
+def infer_cache_size(ckpt, ckpt_path=None):
+    """Infer the preprocessing cache size (512 vs 768) for this checkpoint.
+
+    多级回退（issue #28）：
+      1) ckpt["cache_size"]（瘦身工具显式写入）
+      2) ckpt["args"]["cache_root"] 含 "768"
+      3) 权重文件名含 "cache768"（覆盖已发布的 Release 权重）
+      4) 默认 512
+    """
+    if isinstance(ckpt, dict):
+        cs = ckpt.get("cache_size")
+        if cs in (512, 768):
+            return int(cs)
+        args = ckpt.get("args")
+        if isinstance(args, dict) and "768" in str(args.get("cache_root", "")):
+            return 768
+    if ckpt_path and "cache768" in os.path.basename(str(ckpt_path)):
         return 768
     return DEFAULT_CACHE_SIZE
 
@@ -157,7 +166,7 @@ def load_model(ckpt_path, device):
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     arch = ckpt.get("arch", "efficientnet_b3")
     img_size = ckpt.get("img_size", 384)
-    cache_size = infer_cache_size(ckpt)
+    cache_size = infer_cache_size(ckpt, ckpt_path)
     # train-on-all checkpoints carry an explicit `use` (PR #16); respect it, else fall
     # back to the auroc comparison — same rule as make_submission.py / infer.py / ensemble.py.
     use = ckpt.get("use")

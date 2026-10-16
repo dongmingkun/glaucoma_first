@@ -97,6 +97,12 @@ def main():
 
     out = args.out or os.path.join(os.path.dirname(args.inp), default_out_name(ckpt, use))
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    # 保留训练时的 cache_root（推理端据此选择 512/768 裁剪档位；丢失会导致静默按 512 处理，见 issue #28）
+    src_cache = ""
+    src_args = ckpt.get("args") if isinstance(ckpt, dict) else None
+    if isinstance(src_args, dict):
+        src_cache = str(src_args.get("cache_root", "") or "")
+    cache_size = 768 if "768" in (src_cache + os.path.basename(out)) else 512
     out_ckpt = {
         "state_dict": sd_fp16,          # 通用键（本工具/其他脚本）
         use: sd_fp16,                    # 与 train.py / predict.py 的读取约定对齐（ckpt[use]）
@@ -104,6 +110,8 @@ def main():
         "img_size": img_size,
         "use": use,
         "fp16": True,
+        "cache_size": cache_size,        # 显式记录（issue #28）
+        "args": {"cache_root": src_cache or f"cache{cache_size}"},
         "source": os.path.basename(args.inp),
     }
     torch.save(out_ckpt, out)

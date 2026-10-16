@@ -93,6 +93,13 @@ def main():
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[args.tta]
     fixed = AGE_MEDIAN if args.no_age else None
     cache_root = (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
+    # issue #28：瘦身权重/无元数据时按文件名回退（cache768 / cache1024）
+    if cache_root == CACHE_ROOT and args.ckpt:
+        _b = os.path.basename(str(args.ckpt))
+        if "cache768" in _b:
+            cache_root = CACHE_ROOT.replace("cache512", "cache768")
+        elif "cache1024" in _b:
+            cache_root = CACHE_ROOT.replace("cache512", "cache1024")
     scales = args.img_sizes or [img_size]
     probs = np.zeros(len(rows))
     for s in scales:
