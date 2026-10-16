@@ -158,7 +158,11 @@ def load_model(ckpt_path, device):
     arch = ckpt.get("arch", "efficientnet_b3")
     img_size = ckpt.get("img_size", 384)
     cache_size = infer_cache_size(ckpt)
-    use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
+    # train-on-all checkpoints carry an explicit `use` (PR #16); respect it, else fall
+    # back to the auroc comparison — same rule as make_submission.py / infer.py / ensemble.py.
+    use = ckpt.get("use")
+    if use not in ("ema", "model"):
+        use = "ema" if ckpt.get("auroc_ema", -1) >= ckpt.get("auroc", -1) else "model"
     sd = ckpt.get(use) or ckpt.get("model") or ckpt.get("state_dict") or ckpt
     model = FundusNet(arch=arch).to(device)
     model.load_state_dict(sd, strict=True)
