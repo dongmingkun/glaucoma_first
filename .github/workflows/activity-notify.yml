@@ -44,7 +44,7 @@ jobs:
               const msgs = commits.slice(-5).map(c => `- ${short(c.message)} (${c.id.slice(0, 7)})`).join('\n');
               headline = `push → \`${branch}\` — ${commits.length} 个提交，by **${who}**`;
               detail = msgs || '- (空提交)';
-            } else if (context.eventName === 'pull_request') {
+            } else if (context.eventName === 'pull_request' || context.eventName === 'pull_request_target') {
               const pr = context.payload.pull_request;
               if (pr.user.login === OWNER_LOGIN) { core.info('owner PR, skip'); return; }
               const action = context.payload.action;
