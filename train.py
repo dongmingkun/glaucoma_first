@@ -46,6 +46,39 @@ ARCH_INFO = {
 }
 
 
+RETFOUND_CKPT = os.environ.get("RETFOUND_CKPT",
+                                   r"D:\glaucoma_work\weights\RETFound_mae_natureCFP.pth")
+
+
+def build_retfound(img_size=224, log=True, drop_path=0.1):
+    """timm ViT-Large/16 + RETFound (MAE, 1.6M retinal images) 权重。
+
+    RETFound 的 checkpoint 是 {'model': state_dict}，键与 timm VisionTransformer
+    对齐（global_pool='avg' 会多一个 fc_norm，checkpoint 里也有）。
+    """
+    import timm
+    m = timm.create_model("vit_large_patch16_224", pretrained=False, num_classes=0,
+                          global_pool="avg", dynamic_img_size=True, img_size=img_size,
+                          drop_path_rate=drop_path)
+    if not os.path.isfile(RETFOUND_CKPT):
+        raise FileNotFoundError(f"RETFound 权重不存在: {RETFOUND_CKPT}（先用 tools/download_retfound.py 下载）")
+    ck = torch.load(RETFOUND_CKPT, map_location="cpu", weights_only=False)
+    sd = ck.get("model", ck)
+    if not any(k.startswith("blocks.") for k in sd):
+        sd = {k.split(".", 1)[1] if k.startswith(("model.", "module.")) else k: v for k, v in sd.items()}
+    sd = {k: v for k, v in sd.items() if not k.startswith("head.")}
+    missing, unexpected = m.load_state_dict(sd, strict=False)
+    if log:
+        print(f"[RETFound] 载入 {RETFOUND_CKPT}: missing={len(missing)} unexpected={len(unexpected)}")
+        if missing:
+            print(f"           missing 示例: {missing[:5]}")
+        if unexpected:
+            print(f"           unexpected 示例: {unexpected[:5]}")
+        if len(missing) > 8:
+            print("           !! 缺失键过多，请检查权重文件与 timm 版本是否匹配")
+    return m
+
+
 def set_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -56,8 +89,25 @@ def set_seed(seed):
 class FundusNet(nn.Module):
     def __init__(self, arch="efficientnet_b3", age_dim=16, pretrained=True, dropout=0.3):
         super().__init__()
-        ctor, weights, feat_dim = ARCH_INFO[arch]
         self.arch = arch
+        if arch.startswith("retfound") or arch.startswith("vit"):
+            feat_dim = 1024
+            self.features = build_retfound(img_size=224) if pretrained else None
+            if self.features is None:
+                import timm
+                self.features = timm.create_model("vit_large_patch16_224", pretrained=False,
+                                                  num_classes=0, global_pool="avg",
+                                                  dynamic_img_size=True)
+            self.avgpool = None      # ViT 走 forward_head 池化
+            self.norm = None
+            self.feat_dim = feat_dim
+            self.age_mlp = nn.Sequential(
+                nn.Linear(1, age_dim), nn.SiLU(), nn.Linear(age_dim, age_dim), nn.SiLU())
+            self.head = nn.Sequential(
+                nn.Linear(feat_dim + age_dim, 512), nn.BatchNorm1d(512), nn.SiLU(),
+                nn.Dropout(dropout), nn.Linear(512, 1))
+            return
+        ctor, weights, feat_dim = ARCH_INFO[arch]
         m = ctor(weights=weights if pretrained else None)
         if arch.startswith("efficientnet"):
             self.features = m.features
@@ -83,10 +133,14 @@ class FundusNet(nn.Module):
         )
 
     def forward(self, x, age):
-        f = self.features(x)
-        f = self.avgpool(f)
-        f = self.norm(f)
-        f = torch.flatten(f, 1)
+        if self.avgpool is None:                      # ViT / RETFound
+            f = self.features.forward_features(x)
+            f = self.features.forward_head(f, pre_logits=True)
+        else:
+            f = self.features(x)
+            f = self.avgpool(f)
+            f = self.norm(f)
+            f = torch.flatten(f, 1)
         a = self.age_mlp(age)
         return self.head(torch.cat([f, a], dim=1)).squeeze(1)
 
