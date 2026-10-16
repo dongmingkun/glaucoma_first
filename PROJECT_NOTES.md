@@ -241,6 +241,11 @@ $VENV ensemble.py --ckpt runA/best.pt runB/best.pt --weights 1 0.8 --submit --ou
 - **预期代价**（定量待 GPU 机器实测回填）：from-scratch 从头训练掉点明显（眼底图 + 3.2% 正类极不平衡 + 仅 5 万张），预计需 **2-3 倍 epoch** 且 AUROC 低 0.01~0.03。
 - **触发条件**：仅在主办方**明确禁止**通用预训练权重时才启用；否则维持 pretrained。
 
+## ⛔ RetFound 合规决策（2026-10-16）
+- RetFound ViT-L（视网膜眼底数据预训练，属**外部医学数据**）**仅限内部消融参考，禁止进入任何提交文件 / 复赛包**。
+- 两个理由：① 与"仅可用主办方数据"规则冲突（风险远高于 ImageNet 通用初始化）；② ViT-L 体积（fp32 ≈1.2GB / fp16 ≈0.6GB）超 500MB 复赛红线。
+- 提交模型一律为 ConvNeXt / EfficientNet 系列。本决策已同步写入 `SUBMISSIONS_LOG.md` 提交流程规则与 `submit_pkg/README.md`。
+
 ## 协作（GitHub）
 - 仓库（私有）：https://github.com/dongmingkun/glaucoma_first
 - 后续工作已拆成工单（Issues），按优先级：
