@@ -74,7 +74,7 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 
 | 候选 | 命令摘要 | epoch | val AUROC | val AUPRC | Δ vs 基线 | 判据 | 结论 |
 |---|---|---|---|---|---|---|---|
-| 多尺度 TTA | `--img-sizes 448 512 576` | - | 待回填 | 待回填 | 待回填 | ≥+0.001/+0.005 | 待回填 |
+| 多尺度 TTA | `--img-sizes 448 512 576` | - | **0.99070** | **0.87796** | AUROC +0.00076 / AUPRC **+0.00540** | ≥+0.001/+0.005 | ✅ 值得纳入（AUPRC 过 +0.005 线，边际） |
 | mixup/cutmix | `--mixup 0.2` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
 | focal loss | `--focal-gamma 2.0` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
 | RandAugment | `--randaugment` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
@@ -83,9 +83,9 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 ## A3. 交付物状态
 
 - [x] 多尺度 TTA 代码（evaluate.py / infer.py `--img-sizes`）
-- [ ] mixup / focal / RandAugment 代码（train.py，待确认优先级后补）
-- [ ] 每项实验结论表（需 GPU 机器实测回填）
-- [ ] 值得纳入集成的候选列表 + 权重路径
+- [x] mixup / focal / RandAugment 代码（train.py 开关，PR #40）
+- [x] 多尺度 TTA 结论表（#30，2026-10-16 实测回填）
+- [ ] mixup / focal / RandAugment 探针（待算力）
 
 ## A4. Issue 回填模板（每项跑完贴一条）
 
