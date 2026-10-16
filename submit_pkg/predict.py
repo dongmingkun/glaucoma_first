@@ -17,14 +17,19 @@ Multi-model ensemble (weighted probability average):
 Baked calibration (monotone logit shift so the 0.5 operating point matches online):
   python predict.py ... --calib-shift 2.214
 
+Latency optimisation (issue #20):
+- Preprocessing de-dup: each image is decoded+cropped ONCE per cache_size group, then
+  shared by all models in that group (instead of once per model x flip = up to 12x).
+- Tensor TTA: flips are done with torch.flip on the tensor, never round-tripping to PIL.
+- Draft alignment: JPEG draft = max(768, cache_size*1.5), matching the training cache
+  (512 cache uses draft 768, 768 cache uses draft 1152), shrinking prob drift to ~1e-4.
+
 Design notes:
 - Backbone: torchvision efficientnet_b0/b3/b4, convnext_tiny/small/base, resnet50
   + age MLP fusion head (same as training; arch read from each checkpoint).
 - Preprocessing: JPEG draft-decode -> fundus crop (gray>15 bbox, 0.2/99.8 percentile
   trim) -> centre square -> cache_size -> model input resize -> ImageNet normalisation.
   cache_size is inferred per-checkpoint from the training --cache-root (512 vs 768).
-- TTA: 4 flip variants averaged (probability space).
-- Latency on T4: decode(few ms, draft) + crop(~5ms) + forward(~7ms fp16 per model).
 """
 import argparse
 import csv
@@ -34,6 +39,7 @@ import time
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 from PIL import Image
 
@@ -93,9 +99,12 @@ class FundusNet(nn.Module):
 
 
 # ---------------------------------------------------------------- preprocessing
-def load_fundus_crop(path, size=DEFAULT_CACHE_SIZE):
+def load_fundus_crop(path, size=DEFAULT_CACHE_SIZE, draft=None):
+    """Decode (draft-aligned) + fundus crop + resize to `size`. Returns PIL RGB."""
+    if draft is None:
+        draft = max(768, int(size * 1.5))
     im = Image.open(path)
-    im.draft("RGB", (768, 768))
+    im.draft("RGB", (draft, draft))
     im = im.convert("RGB")
     w, h = im.size
     arr = np.asarray(im)
@@ -120,32 +129,6 @@ def load_fundus_crop(path, size=DEFAULT_CACHE_SIZE):
     if pad_l or pad_t or pad_r or pad_b:
         crop = np.pad(crop, ((pad_t, pad_b), (pad_l, pad_r), (0, 0)), mode="constant")
     return Image.fromarray(crop).resize((size, size), Image.BICUBIC)
-
-
-class InferDS(torch.utils.data.Dataset):
-    def __init__(self, paths, ages, img_size, cache_size, flip=0):
-        self.paths = paths
-        self.ages = ages
-        self.img_size = img_size
-        self.cache_size = cache_size
-        self.flip = flip
-        self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
-        self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
-
-    def __len__(self):
-        return len(self.paths)
-
-    def __getitem__(self, i):
-        img = load_fundus_crop(self.paths[i], size=self.cache_size)
-        img = img.resize((self.img_size, self.img_size), Image.BILINEAR)
-        if self.flip & 1:
-            img = torchvision.transforms.functional.hflip(img)
-        if self.flip & 2:
-            img = torchvision.transforms.functional.vflip(img)
-        t = torchvision.transforms.functional.to_tensor(img)
-        t = (t - self.mean) / self.std
-        age = self.ages[i]
-        return t, torch.tensor([(age - AGE_MEDIAN) / 15.0], dtype=torch.float32), i
 
 
 def clean_age(v):
@@ -183,24 +166,49 @@ def load_model(ckpt_path, device):
     return model, {"arch": arch, "img_size": img_size, "cache_size": cache_size, "use": use}
 
 
-def predict_one(model, paths, ages, meta, device, tta, batch_size, workers):
-    """Run one model with TTA and return per-image probability array."""
-    img_size = meta["img_size"]
-    cache_size = meta["cache_size"]
+def run_group(paths, ages, members, device, tta, batch_size):
+    """Run all models sharing one cache_size, preprocessing each image ONCE.
+
+    members: list of (model, meta, weight). Returns a list of per-model prob arrays.
+    """
+    cache_size = members[0][1]["cache_size"]
+    draft = max(768, int(cache_size * 1.5))
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[tta]
-    total = np.zeros(len(paths), dtype=np.float64)
-    for fl in flips:
-        ds = InferDS(paths, ages, img_size, cache_size, flip=fl)
-        dl = torch.utils.data.DataLoader(ds, batch_size=batch_size, shuffle=False,
-                                         num_workers=workers, pin_memory=True)
-        with torch.no_grad():
-            for x, age, idx in dl:
-                x = x.to(device, non_blocking=True)
-                age = age.to(device, non_blocking=True)
-                with torch.amp.autocast("cuda", dtype=torch.float16, enabled=(device == "cuda")):
-                    logits = model(x, age)
-                total[idx.numpy()] += torch.sigmoid(logits.float()).cpu().numpy()
-    return total / len(flips)
+    mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
+    age_all = torch.tensor([[(a - AGE_MEDIAN) / 15.0] for a in ages],
+                           dtype=torch.float32, device=device)
+
+    n = len(paths)
+    acc = [np.zeros(n, dtype=np.float64) for _ in members]
+
+    for start in range(0, n, batch_size):
+        idx = list(range(start, min(start + batch_size, n)))
+        # ---- preprocessing de-dup: decode+crop ONCE for this batch ----
+        base = []
+        for i in idx:
+            img = load_fundus_crop(paths[i], size=cache_size, draft=draft)
+            base.append(torchvision.transforms.functional.to_tensor(img))
+        base = torch.stack(base).to(device)  # (B, 3, cache_size, cache_size)
+        age_b = age_all[idx]
+
+        for mi, (model, meta, _w) in enumerate(members):
+            img_size = meta["img_size"]
+            x = F.interpolate(base, size=(img_size, img_size), mode="bilinear",
+                              align_corners=False)
+            x = (x - mean) / std
+            with torch.no_grad():
+                for fl in flips:
+                    xf = x
+                    if fl & 1:
+                        xf = torch.flip(xf, dims=[3])  # horizontal
+                    if fl & 2:
+                        xf = torch.flip(xf, dims=[2])  # vertical
+                    with torch.amp.autocast("cuda", dtype=torch.float16, enabled=(device == "cuda")):
+                        logits = model(xf, age_b)
+                    acc[mi][idx] += torch.sigmoid(logits.float()).cpu().numpy()
+        del base, age_b
+    return [a / len(flips) for a in acc]
 
 
 def main():
@@ -215,7 +223,6 @@ def main():
     ap.add_argument("--out", default="submission.csv")
     ap.add_argument("--tta", type=int, default=4, choices=[1, 2, 4])
     ap.add_argument("--batch-size", type=int, default=64)
-    ap.add_argument("--workers", type=int, default=4)
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -260,12 +267,20 @@ def main():
             paths.append(p)
     print(f"{len(names)} images to predict", flush=True)
 
+    # ---- group models by cache_size so preprocessing is shared ----
+    groups = {}
+    for (m, meta), w in zip(models, blend):
+        groups.setdefault(meta["cache_size"], []).append((m, meta, w))
+    print(f"cache_size groups: {[(k, len(v)) for k, v in groups.items()]}", flush=True)
+
     t_start = time.time()
     ens = np.zeros(len(names), dtype=np.float64)
-    for (m, meta), w in zip(models, blend):
-        probs = predict_one(m, paths, ages, meta, device, args.tta, args.batch_size, args.workers)
-        ens += w * probs
-        print(f"  model {meta['arch']} done ({time.time()-t_start:.0f}s elapsed)", flush=True)
+    for cache_size, members in groups.items():
+        probs = run_group(paths, ages, members, device, args.tta, args.batch_size)
+        for (m, meta, w), p in zip(members, probs):
+            ens += w * p
+            print(f"  model {meta['arch']} (cache{cache_size}) done "
+                  f"({time.time()-t_start:.0f}s elapsed)", flush=True)
 
     if args.calib_shift != 0.0:
         eps = 1e-7
