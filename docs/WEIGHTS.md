@@ -2,13 +2,14 @@
 
 > 跨机器集成的权重统一在此登记。权重文件**不入库**，通过 GitHub Release 附件或群文件共享。
 > 命名规范（#14）：`<arch>_<img>_<cache>_<MMDD>_auprc<0.xxxx>.pt`
-> **Release：[weights-1016](https://github.com/dongmingkun/glaucoma_first/releases/tag/weights-1016)** —— 队长机器已上传 8 个 fp16 瘦身权重，下载即用
+> **Release：[weights-1016](https://github.com/dongmingkun/glaucoma_first/releases/tag/weights-1016)** —— 队长机器 8 个 fp16 瘦身权重 + 云 4090D 的 seed2（#35 成员 A），下载即用
 
 ## 权重清单（全部为 fp16 瘦身版，由 `tools/slim_weights.py` 产出）
 
 | 权重文件（点击下载） | arch | img_size | cache-root | TTA4 AUROC | TTA4 AUPRC | 用途 |
 |---|---|---|---|---|---|---|
 | [`convnext_small_512_cache768_1016_auprc0.8752.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_512_cache768_1016_auprc0.8752.pt) | convnext_small | 512 | **cache768** | 0.99085 | **0.87520** | ⭐ hi512_v2（续训 6ep）— **#13 的 640 热启动用它** |
+| [`convnext_small_512_cache768_1016_seed2_auprc0.8750.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_512_cache768_1016_seed2_auprc0.8750.pt) | convnext_small | 512 | **cache768** | **0.99064** | **0.87503** | ⭐ seed2 多样性成员（seed 7 热启动 hi512_v2，6ep，云 4090D）— 待集成确认 |
 | [`convnext_base_512_cache768_1016_auprc0.8765.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_base_512_cache768_1016_auprc0.8765.pt) | convnext_base | 512 | **cache768** | 0.99089 | **0.87646** | ⭐ 当前最强单模（Base@512） |
 | [`convnext_base_384_cache512_1015_auprc0.8644.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_base_384_cache512_1015_auprc0.8644.pt) | convnext_base | 384 | cache512 | 0.99117 | 0.86439 | #11 的 Base@512 热启动基底 |
 | [`convnext_small_384_cache512_1015_auprc0.8637.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_384_cache512_1015_auprc0.8637.pt) | convnext_small | 384 | cache512 | 0.98994 | 0.86371 | 集成成员 / 热启动基底 |
@@ -50,3 +51,9 @@ python tools/slim_weights.py --in <训练产出的 best.pt> --out <输出路径�
 ## 变更记录
 - 2026-10-16 队长上传 8 个 fp16 瘦身权重至 `weights-1016`（含最新 hi512_v2 与 Base@512），回填本表链接
 - 2026-10-16 修复瘦身工具与 predict.py 的键名集成问题 + 输出目录自动创建（PR #19 追加提交）
+- 2026-10-16 云 4090D 训练 seed2 成员（#35 成员 A）并上传 Release：
+  ```bash
+  python train.py --arch convnext_small --img-size 512 --cache-root <cache768> \
+    --epochs 6 --batch-size 8 --accum 6 --lr 3e-5 --head-lr 1.5e-4 \
+    --loader workers --workers 3 --init-from <hi512_v2.pt> --seed 7 --tag cs_hi512_seed2
+  # TTA4：AUROC 0.99064 / AUPRC 0.87503（vs hi512_v2 0.98994/0.87256，+0.00247）
