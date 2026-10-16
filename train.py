@@ -150,11 +150,15 @@ def age_tensor(age):
 
 
 class FundusDS(Dataset):
-    def __init__(self, split, rows, img_size=384, train=True, cache_root=None):
+    def __init__(self, split, rows, img_size=384, train=True, cache_root=None,
+                 rot_deg=25.0, randaugment=None):
         self.dir = os.path.join(cache_root or CACHE_ROOT, split)
         self.rows = rows
         self.img_size = img_size
         self.train = train
+        self.rot_deg = rot_deg
+        self.ra = torchvision.transforms.RandAugment(
+            num_ops=randaugment[0], magnitude=randaugment[1]) if randaugment is not None else None
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
         self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 
@@ -175,7 +179,7 @@ class FundusDS(Dataset):
             if random.random() < 0.5:
                 img = torchvision.transforms.functional.vflip(img)
             if random.random() < 0.5:
-                img = img.rotate(random.uniform(-25, 25), resample=Image.BILINEAR, fillcolor=(0, 0, 0))
+                img = img.rotate(random.uniform(-self.rot_deg, self.rot_deg), resample=Image.BILINEAR, fillcolor=(0, 0, 0))
             cj = torchvision.transforms.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.04)
             img = cj(img)
             if random.random() < 0.15:
@@ -183,6 +187,8 @@ class FundusDS(Dataset):
         else:
             img = img.resize((self.img_size, self.img_size), Image.BILINEAR)
         t = torchvision.transforms.functional.to_tensor(img)
+        if self.ra is not None:
+            t = self.ra(t)
         t = (t - self.mean) / self.std
         if self.train and random.random() < 0.1:
             # random erasing
@@ -199,6 +205,60 @@ def select_score(auroc, auprc, mode):
     if mode == "auprc":
         return auprc
     return 0.5 * (auroc + auprc)
+
+
+def mixup_batch(x, y, alpha):
+    """Mixup (#31): linearly mix the batch with a shuffled copy.
+
+    Returns (mixed_x, y_a, y_b, lam); loss = lam*L(logits,y_a)+(1-lam)*L(logits,y_b).
+    alpha<=0 时退回原样（lam=1，等价无 mixup）。
+    """
+    if alpha <= 0:
+        return x, y, y, 1.0
+    lam = float(np.random.beta(alpha, alpha))
+    idx = torch.randperm(x.size(0), device=x.device)
+    mixed_x = lam * x + (1 - lam) * x[idx]
+    return mixed_x, y, y[idx], lam
+
+
+def cutmix_batch(x, y, alpha):
+    """CutMix (#31): paste a random rectangular region from a shuffled copy.
+
+    Returns (mixed_x, y_a, y_b, lam). alpha<=0 时退回原样（lam=1）。
+    """
+    if alpha <= 0:
+        return x, y, y, 1.0
+    lam = float(np.random.beta(alpha, alpha))
+    b, _, h, w = x.shape
+    cx, cy = np.random.randint(w), np.random.randint(h)
+    rw, rh = int(w * np.sqrt(1 - lam)), int(h * np.sqrt(1 - lam))
+    x1 = max(cx - rw // 2, 0)
+    y1 = max(cy - rh // 2, 0)
+    x2 = min(cx + rw // 2, w)
+    y2 = min(cy + rh // 2, h)
+    idx = torch.randperm(b, device=x.device)
+    mixed_x = x.clone()
+    mixed_x[:, :, y1:y2, x1:x2] = x[idx, :, y1:y2, x1:x2]
+    lam = 1.0 - ((y2 - y1) * (x2 - x1)) / float(h * w)
+    return mixed_x, y, y[idx], lam
+
+
+class FocalBCEWithLogits(nn.Module):
+    """Focal loss (#31) on top of BCEWithLogits, supports pos_weight.
+
+    loss = mean( (1 - p_t)^gamma * BCE_with_logits(logits, y) ),  gamma=0 退化为标准 BCE。
+    """
+
+    def __init__(self, gamma=2.0, pos_weight=None):
+        super().__init__()
+        self.gamma = gamma
+        self.pos_weight = pos_weight
+
+    def forward(self, logits, targets):
+        bce = F.binary_cross_entropy_with_logits(logits, targets, pos_weight=self.pos_weight, reduction="none")
+        p = torch.sigmoid(logits)
+        pt = p * targets + (1 - p) * (1 - targets)
+        return ((1 - pt) ** self.gamma * bce).mean()
 
 
 class ModelEMA:
@@ -349,6 +409,13 @@ def main():
     ap.add_argument("--head-lr", type=float, default=5e-4)
     ap.add_argument("--weight-decay", type=float, default=0.02)
     ap.add_argument("--pos-weight", type=float, default=5.0)
+    # --- 训练侧开关（#31，全部默认关闭/保持现状，不改变默认行为） ---
+    ap.add_argument("--mixup", type=float, default=0.0, help="mixup alpha（>0 启用，推荐 0.2）")
+    ap.add_argument("--cutmix", type=float, default=0.0, help="cutmix alpha（>0 启用，推荐 0.2；与 --mixup 互斥）")
+    ap.add_argument("--focal-gamma", type=float, default=0.0, help="focal loss gamma（>0 启用，推荐 2.0；0=标准 BCE）")
+    ap.add_argument("--randaugment", type=int, nargs=2, default=None, metavar=("N", "M"),
+                    help="RandAugment 操作数与强度（如 --randaugment 2 9）")
+    ap.add_argument("--rot-deg", type=float, default=25.0, help="随机旋转范围 ±deg（默认 25，保持现状）")
     ap.add_argument("--warmup-frac", type=float, default=0.05)
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--loader", default="threads", choices=["threads", "workers"])
@@ -413,8 +480,10 @@ def main():
     npos = sum(1 for r in train_rows if r[2] == 1)
     print(f"train rows={len(train_rows)} pos={npos} ({npos/max(1,len(train_rows)):.4f})")
 
-    ds_tr = MixedDS(train_rows, args.img_size, cache_root=CACHE_ROOT) if args.train_on_all else \
-        FundusDS("train", train_rows, args.img_size, train=True, cache_root=CACHE_ROOT)
+    ds_tr = MixedDS(train_rows, args.img_size, cache_root=CACHE_ROOT,
+                    rot_deg=args.rot_deg, randaugment=args.randaugment) if args.train_on_all else \
+        FundusDS("train", train_rows, args.img_size, train=True, cache_root=CACHE_ROOT,
+                 rot_deg=args.rot_deg, randaugment=args.randaugment)
     dl_tr, dl_va = None, None
     if args.loader == "threads":
         dl_tr = ThreadLoader(ds_tr, args.batch_size, nthreads=args.threads, shuffle=True, drop_last=True)
@@ -443,7 +512,11 @@ def main():
         model.load_state_dict(sd, strict=True)
         print(f"warm start from {args.init_from}")
 
-    crit = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.pos_weight], device=device))
+    if args.focal_gamma > 0:
+        crit = FocalBCEWithLogits(gamma=args.focal_gamma,
+                                  pos_weight=torch.tensor([args.pos_weight], device=device))
+    else:
+        crit = nn.BCEWithLogitsLoss(pos_weight=torch.tensor([args.pos_weight], device=device))
     backbone_params, head_params = [], []
     for n, p in model.named_parameters():
         (head_params if (n.startswith("head") or n.startswith("age_mlp")) else backbone_params).append(p)
@@ -487,9 +560,19 @@ def main():
             x = x.to(device, non_blocking=True)
             age = age.to(device, non_blocking=True)
             y = y.to(device, non_blocking=True)
+            # mixup / cutmix（#31，默认关闭；二者互斥，mixup 优先）
+            y_a = y_b = y
+            lam = 1.0
+            if args.mixup > 0:
+                x, y_a, y_b, lam = mixup_batch(x, y, args.mixup)
+            elif args.cutmix > 0:
+                x, y_a, y_b, lam = cutmix_batch(x, y, args.cutmix)
             with torch.amp.autocast("cuda", dtype=torch.float16):
                 logits = model(x, age)
-                loss = crit(logits.float(), y) / args.accum
+                if lam < 1.0:
+                    loss = (lam * crit(logits.float(), y_a) + (1 - lam) * crit(logits.float(), y_b)) / args.accum
+                else:
+                    loss = crit(logits.float(), y) / args.accum
             scaler.scale(loss).backward()
             run_loss += loss.item() * args.accum * len(y)
             nseen += len(y)
@@ -565,10 +648,13 @@ def main():
 class MixedDS(Dataset):
     """Train-on-all: rows from train+valid, resolved by existing cache path."""
 
-    def __init__(self, rows, img_size=384, cache_root=None):
+    def __init__(self, rows, img_size=384, cache_root=None, rot_deg=25.0, randaugment=None):
         self.rows = rows
         self.img_size = img_size
         self.cache_root = cache_root or CACHE_ROOT
+        self.rot_deg = rot_deg
+        self.ra = torchvision.transforms.RandAugment(
+            num_ops=randaugment[0], magnitude=randaugment[1]) if randaugment is not None else None
         self.mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
         self.std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
 
@@ -590,13 +676,15 @@ class MixedDS(Dataset):
         if random.random() < 0.5:
             img = torchvision.transforms.functional.vflip(img)
         if random.random() < 0.5:
-            img = img.rotate(random.uniform(-25, 25), resample=Image.BILINEAR, fillcolor=(0, 0, 0))
+            img = img.rotate(random.uniform(-self.rot_deg, self.rot_deg), resample=Image.BILINEAR, fillcolor=(0, 0, 0))
         cj = torchvision.transforms.ColorJitter(brightness=0.25, contrast=0.25, saturation=0.25, hue=0.04)
         img = cj(img)
         if random.random() < 0.15:
             from PIL import ImageFilter
             img = img.filter(ImageFilter.GaussianBlur(random.uniform(0.3, 1.2)))
         t = torchvision.transforms.functional.to_tensor(img)
+        if self.ra is not None:
+            t = self.ra(t)
         t = (t - self.mean) / self.std
         if random.random() < 0.1:
             h, w = t.shape[1:]
