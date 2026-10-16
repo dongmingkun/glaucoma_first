@@ -209,6 +209,16 @@ def main():
         print(f"  expected LB if metric=balACC@0.5 (after calibration): {tm2['balacc']*100:.2f}")
         report["calibration"] = {"shift": float(shift), "raw_t_star": float(t_star), **tm2}
 
+    # 复合口径预估 LB（#29）：线上 ≈ 0.5*balACC@0.5 + 0.25*AUROC + 0.25*AUPRC
+    # 三点拟合锁定（见 SUBMISSIONS_LOG.md「口径判定对照」），典型误差 ±0.3
+    bal_lb = tm2["balacc"] if args.calibrate else tm["balacc"]
+    est_lb = 0.5 * bal_lb + 0.25 * rm["auroc"] + 0.25 * rm["auprc"]
+    print(f"\n预估LB (复合口径 0.5*balACC + 0.25*AUROC + 0.25*AUPRC) = {est_lb*100:.2f}  "
+          f"(三点拟合，典型误差 ±0.3)")
+    report["est_lb"] = {"value": round(est_lb * 100, 2),
+                        "formula": "0.5*balACC@0.5 + 0.25*AUROC + 0.25*AUPRC",
+                        "balacc_used": bal_lb, "auroc": rm["auroc"], "auprc": rm["auprc"]}
+
     # ---- write + validate
     names = []
     with open(os.path.join(CSV_ROOT, "test.csv"), encoding="utf-8-sig", newline="") as f:
