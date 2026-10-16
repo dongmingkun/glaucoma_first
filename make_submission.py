@@ -140,6 +140,8 @@ def main():
     ap.add_argument("--ckpt", nargs="+", required=True)
     ap.add_argument("--weights", nargs="*", type=float, default=None)
     ap.add_argument("--tta", type=int, default=4, choices=[1, 2, 4])
+    ap.add_argument("--img-sizes", type=int, nargs="+", default=None,
+                    help="multi-scale TTA: average over several input scales (e.g. 448 512 576)")
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--calibrate", dest="calibrate", action="store_true", default=True)
     ap.add_argument("--no-calibrate", dest="calibrate", action="store_false")
@@ -166,13 +168,21 @@ def main():
             print(f"[{i}] !! WARNING: {ck} is a --train-on-all checkpoint. Valid rows were part of "
                   f"its training set, so its AUROC/AUPRC/balACC are contaminated and any "
                   f"calibration fitted on them is unreliable.", flush=True)
-        pv = predict_split(model, "valid", valid_rows, img_size, flips, args.workers, cache_root=cache_root)
-        pt = predict_split(model, "test", test_rows, img_size, flips, args.workers, cache_root=cache_root)
+        # 多尺度 TTA（#43）：每尺度内做 flip TTA，跨尺度平均（与 evaluate.py 语义一致）
+        scales = args.img_sizes or [img_size]
+        pv = np.zeros(len(valid_rows), dtype=np.float64)
+        pt = np.zeros(len(test_rows), dtype=np.float64)
+        for s in scales:
+            pv += predict_split(model, "valid", valid_rows, s, flips, args.workers, cache_root=cache_root)
+            pt += predict_split(model, "test", test_rows, s, flips, args.workers, cache_root=cache_root)
+        pv /= len(scales)
+        pt /= len(scales)
         rm, tm = ranking_metrics(y, pv), threshold_metrics(y, pv)
-        print(f"[{i}] {os.path.basename(os.path.dirname(ck))} use={use} img={img_size} "
+        print(f"[{i}] {os.path.basename(os.path.dirname(ck))} use={use} img={img_size} scales={scales} "
               f"cache={os.path.basename(str(cache_root))} "
               f"AUROC={rm['auroc']:.5f} AUPRC={rm['auprc']:.5f} balACC@0.5={tm['balacc']:.5f}", flush=True)
-        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, "cache_root": cache_root,
+        report["models"].append({"ckpt": ck, "use": use, "img_size": img_size, "scales": scales,
+                                 "cache_root": cache_root,
                                  "train_on_all": bool(ckpt.get("train_on_all", False)), **rm, **tm})
         val_probs.append(pv)
         test_probs.append(pt)
