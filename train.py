@@ -293,6 +293,8 @@ class ThreadLoader:
 
 
 def proc_commit_mb():
+    if sys.platform != "win32":
+        return -1.0
     import ctypes
     import ctypes.wintypes
 
