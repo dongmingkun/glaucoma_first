@@ -1,12 +1,13 @@
 # 团队活动通知：把队友的 push / PR 变成一条 @你 的评论（GitHub 原生通知，无需外部服务）
-# 触发：任何分支的 push、PR 的打开/重开/可评审/关闭
+# 触发：任何分支的 push、PR 的打开/重开/可评审/关闭（含来自 fork 的 PR —— 用 pull_request_target，
+#       在基仓库上下文运行；本工作流不检出 PR 代码，只发通知评论，无安全风险）
 # 行为：在「📣 团队活动日志（自动通知）」工单里追加一条记录，并 @ 仓库主
 # 说明：仓库主自己的 push/PR 不通知（避免自扰）；想改通知范围直接改本文件
 name: team-activity-notify
 
 on:
   push:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, ready_for_review, closed]
   workflow_dispatch:
 
@@ -15,7 +16,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: activity-notify-${{ github.event_name }}-${{ github.ref }}
+  group: activity-notify-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 jobs:
