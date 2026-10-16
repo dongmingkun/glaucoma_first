@@ -14,6 +14,8 @@
 
 > 备注：`submission_cal.csv`（`f49f2242`，B3@384 单模型校准版）与 `submission_20251015_ens3_cal.csv`（`d7f50bc4`，B3 三方集成校准版）为备选产物，未提交。
 
+| 2026-10-17（计划） | @dongmingkun | `submit_ready/submission.csv`（内部名 `submission_20251017_ens8c_cal.csv`） | 待补 | ens8c：8 成员（hi512_v2×2 + seed2 + Base@512 + Base@384 + Small@640 + B3×3）+ **全成员多尺度 TTA** + 校准 | 4x×多尺度 | 是 | 待回填 | 复合分 94.913（本地，+0.061 vs ens7） |
+
 ## 提交流程规则（#6）
 
 1. **提交前**：先在上表登记一行「计划提交」，标注文件名 + md5 + 来源 + 预期分。

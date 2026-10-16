@@ -27,6 +27,7 @@ MEMBERS = [
     ("hi512_v2", 2.0, r"D:\glaucoma_work\runs\convnext_small_512_1015_191923_cs_hi512_v2\best.pt", [448, 512, 576]),
     ("cb512",    1.0, r"D:\glaucoma_work\runs\convnext_base_512_1016_005020_cb_hi512b\best.pt", [448, 512, 576]),
     ("cb384",    0.5, r"D:\glaucoma_work\runs\convnext_base_384_1015_113411_cnxb_384\best.pt", [352, 384, 448]),
+    ("seed2",    1.0, r"D:\glaucoma_work\weights\convnext_small_512_cache768_1016_seed2_auprc0.8750.pt", [512]),  # 概率由队友提供（云端 4090D 训的多样性成员）
     ("hi640",    0.5, r"D:\glaucoma_work\runs\convnext_small_640_1016_130942_cs_hi640d\best.pt", [576, 640, 704]),
     ("b384", 0.5 / 3, r"D:\glaucoma_work\runs\efficientnet_b3_384_1014_194338_b3_384_cont\best.pt", [384]),
     ("b448", 0.5 / 3, r"D:\glaucoma_work\runs\efficientnet_b3_448_1014_221755_b3_448\best.pt", [448]),
@@ -53,8 +54,8 @@ def main():
                 model, img_size, use, ckpt, cache_root = load_model(ck)
                 pv = np.zeros(len(val_rows)); pt = np.zeros(len(test_rows))
                 for s in scales:
-                    pv += predict_split(model, "valid", val_rows, s, FLIPS, 2, cache_root=cache_root)
-                    pt += predict_split(model, "test", test_rows, s, FLIPS, 2, cache_root=cache_root)
+                    pv += predict_split(model, "valid", val_rows, s, FLIPS, 2, bs=16, cache_root=cache_root)
+                    pt += predict_split(model, "test", test_rows, s, FLIPS, 2, bs=16, cache_root=cache_root)
                 pv /= len(scales); pt /= len(scales)
                 np.save(vp, pv); np.save(tp, pt)
                 log(f"{name}: 完成（scales={scales}, cache={os.path.basename(str(cache_root))}）")
