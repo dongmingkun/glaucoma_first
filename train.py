@@ -45,6 +45,13 @@ ARCH_INFO = {
     "resnet50": (torchvision.models.resnet50, ResNet50_Weights.DEFAULT, 2048),
 }
 
+# timm ViT 架构（#48 域内自监督预训练微调用）。tname -> (timm 模型名, 特征维)。
+VIT_ARCH = {
+    "vit_small": ("vit_small_patch16_224", 384),
+    "vit_base": ("vit_base_patch16_224", 768),
+    "vit_large": ("vit_large_patch16_224", 1024),
+}
+
 
 RETFOUND_CKPT = os.environ.get("RETFOUND_CKPT",
                                    r"D:\glaucoma_work\weights\RETFound_mae_natureCFP.pth")
@@ -91,13 +98,19 @@ class FundusNet(nn.Module):
         super().__init__()
         self.arch = arch
         if arch.startswith("retfound") or arch.startswith("vit"):
-            feat_dim = 1024
-            self.features = build_retfound(img_size=224) if pretrained else None
-            if self.features is None:
+            if arch == "retfound_vitl":
+                feat_dim = 1024
+                self.features = build_retfound(img_size=224) if pretrained else None
+                if self.features is None:
+                    import timm
+                    self.features = timm.create_model("vit_large_patch16_224", pretrained=False,
+                                                      num_classes=0, global_pool="token",
+                                                      dynamic_img_size=True)
+            else:  # vit_small / vit_base / vit_large（timm，--init-from 可热启动 MAE 域内预训练权重）
                 import timm
-                self.features = timm.create_model("vit_large_patch16_224", pretrained=False,
-                                                  num_classes=0, global_pool="token",
-                                                  dynamic_img_size=True)
+                tname, feat_dim = VIT_ARCH[arch]
+                self.features = timm.create_model(tname, pretrained=pretrained, num_classes=0,
+                                                  global_pool="token", dynamic_img_size=True)
             self.avgpool = None      # ViT 走 forward_head 池化
             self.norm = None
             self.feat_dim = feat_dim
@@ -402,7 +415,8 @@ def evaluate(model, loader, device, crit):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--arch", default="efficientnet_b3", choices=list(ARCH_INFO) + ["retfound_vitl"])
+    ap.add_argument("--arch", default="efficientnet_b3",
+                    choices=list(ARCH_INFO) + ["retfound_vitl"] + list(VIT_ARCH))
     ap.add_argument("--img-size", type=int, default=384)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=32)
@@ -508,11 +522,20 @@ def main():
     model = FundusNet(args.arch, pretrained=bool(args.pretrained)).to(device)
     if args.init_from:
         sd = torch.load(args.init_from, map_location="cpu", weights_only=False)
-        if isinstance(sd, dict) and ("ema" in sd or "model" in sd):
+        if isinstance(sd, dict) and "mask_ratio" in sd and "model" in sd:
+            # MAE 域内自监督预训练 checkpoint（pretrain_mae.py 产物）：只加载 backbone features
+            enc_sd = sd["model"]
+            missing, unexpected = model.features.load_state_dict(enc_sd, strict=False)
+            print(f"warm start (MAE backbone, {len(enc_sd)} keys) from {args.init_from}; "
+                  f"missing={len(missing)} unexpected={len(unexpected)}")
+        elif isinstance(sd, dict) and ("ema" in sd or "model" in sd):
             a_ema, a_mod = sd.get("auroc_ema", -1), sd.get("auroc", -1)
             sd = sd["ema"] if a_ema >= a_mod else sd["model"]
-        model.load_state_dict(sd, strict=True)
-        print(f"warm start from {args.init_from}")
+            model.load_state_dict(sd, strict=True)
+            print(f"warm start from {args.init_from}")
+        else:
+            model.load_state_dict(sd, strict=True)
+            print(f"warm start from {args.init_from}")
 
     if args.focal_gamma > 0:
         crit = FocalBCEWithLogits(gamma=args.focal_gamma,
