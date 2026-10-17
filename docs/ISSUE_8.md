@@ -75,17 +75,19 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 | 候选 | 命令摘要 | epoch | val AUROC | val AUPRC | Δ vs 基线 | 判据 | 结论 |
 |---|---|---|---|---|---|---|---|
 | 多尺度 TTA | `--img-sizes 448 512 576` | - | **0.99070** | **0.87796** | AUROC +0.00076 / AUPRC **+0.00540** | ≥+0.001/+0.005 | ✅ 值得纳入（AUPRC 过 +0.005 线，边际） |
-| mixup/cutmix | `--mixup 0.2` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
-| focal loss | `--focal-gamma 2.0` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
-| RandAugment | `--randaugment` | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
+| mixup/cutmix | `--mixup 0.2` | 3ep 热启动 | **0.98873** | **0.85791** | AUROC +0.00385 / AUPRC +0.02033 | AUROC≥+0.001 | ✅ 有效（双指标正收益，建议主力复验） |
+| focal loss | `--focal-gamma 2.0` | 3ep 热启动 | **0.98918** | **0.84375** | AUROC +0.00430 / AUPRC +0.00617 | AUROC≥+0.001 | ✅ 有效（边际） |
+| RandAugment | `--randaugment 2 9` | 3ep 热启动 | **0.98992** | **0.85677** | AUROC +0.00504 / AUPRC +0.01919 | AUROC≥+0.001 | ✅ 有效（AUROC 增益最显著） |
 | Seed ensemble | 2~3 seed | 待回填 | 待回填 | 待回填 | 待回填 | 同上 | 待回填 |
+
+> ⚠️ **判据更新（2026-10-17）**：评分口径已锁定为 **AUROC×100**（队长提交 ens8c 实测 98.15 反推），探针判据改为 **AUROC ≥ +0.001**（此前 AUPRC 判据作废）。上表 3 项训练侧探针（mixup/focal/RandAugment）均为 TTA1 val ep3 EMA，vs baseline（AUROC 0.98488 / AUPRC 0.83758，同配置同 seed 42 同 3ep 热启动）。
 
 ## A3. 交付物状态
 
 - [x] 多尺度 TTA 代码（evaluate.py / infer.py `--img-sizes`）
 - [x] mixup / focal / RandAugment 代码（train.py 开关，PR #40）
 - [x] 多尺度 TTA 结论表（#30，2026-10-16 实测回填）
-- [ ] mixup / focal / RandAugment 探针（待算力）
+- [x] mixup / focal / RandAugment 探针（#45，2026-10-17 云 4090D 实测回填）
 
 ## A4. Issue 回填模板（每项跑完贴一条）
 
