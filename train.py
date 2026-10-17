@@ -186,9 +186,9 @@ class FundusDS(Dataset):
                 img = img.filter(__import__("PIL.ImageFilter", fromlist=["GaussianBlur"]).GaussianBlur(random.uniform(0.3, 1.2)))
         else:
             img = img.resize((self.img_size, self.img_size), Image.BILINEAR)
-        t = torchvision.transforms.functional.to_tensor(img)
         if self.ra is not None:
-            t = self.ra(t)
+            img = self.ra(img)  # PIL 域（posterize/solarize 需 uint8，float tensor 会报错）
+        t = torchvision.transforms.functional.to_tensor(img)
         t = (t - self.mean) / self.std
         if self.train and random.random() < 0.1:
             # random erasing
@@ -684,9 +684,9 @@ class MixedDS(Dataset):
         if random.random() < 0.15:
             from PIL import ImageFilter
             img = img.filter(ImageFilter.GaussianBlur(random.uniform(0.3, 1.2)))
-        t = torchvision.transforms.functional.to_tensor(img)
         if self.ra is not None:
-            t = self.ra(t)
+            img = self.ra(img)  # PIL 域（posterize/solarize 需 uint8，float tensor 会报错）
+        t = torchvision.transforms.functional.to_tensor(img)
         t = (t - self.mean) / self.std
         if random.random() < 0.1:
             h, w = t.shape[1:]
