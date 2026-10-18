@@ -16,7 +16,8 @@
 
 | 2026-10-17 | @dongmingkun | `submit_ready/submission.csv`（内部名 `submission_20251017_ens8c_cal.csv`） | `de35987d` | ens8c：8 成员（hi512_v2×2 + seed2 + Base@512 + Base@384 + Small@640 + B3×3）+ **全成员多尺度 TTA** + 校准 | 4x×多尺度 | 是 | **98.15（复赛第 31 名；榜首 99.02）** | 复赛榜（AUROC×100）首测：valid AUROC ≈0.992 → test **0.9815**（泛化差约 −0.011） |
 
-| 2026-10-18（计划） | @dongmingkun | `submission_20251018_ens9_cal.csv` | `92c3ac09` | **ens9**：AUROC 口径重加权集成（cb512×0.591 + hi512_v2×0.224 + cb384×0.141 + b512×0.044），**单尺度** TTA4 + 校准 | 4x | 是 | 待回填 | valid AUROC **0.99260**（vs ens8c 0.992095，**+0.0005** → 预估 98.20±0.05；配对 bootstrap P(改善)≈0.87）；另：多尺度 TTA 对 AUROC 轻微负作用（−0.00005~−0.00015），故本版改单尺度 |
+| 2026-10-18（备选·未提交） | @dongmingkun | `submission_20251018_ens9_cal.csv` | `92c3ac09` | **ens9**：AUROC 口径重加权集成（cb512×0.591 + hi512_v2×0.224 + cb384×0.141 + b512×0.044），**单尺度** TTA4 + 校准 | 4x | 是 | 待回填 | valid AUROC **0.99260**（vs ens8c 0.992095，**+0.0005** → 预估 98.20±0.05；配对 bootstrap P(改善)≈0.87）；另：多尺度 TTA 对 AUROC 轻微负作用（−0.00005~−0.00015），故本版改单尺度 |
+| 2026-10-18（计划） | @dongmingkun | `submission_20251018_ens10_cal.csv` | `ce91bbf4` | **ens10**：ens9×0.80 + train+all 家族×0.20（cs_hi512_all 与 RA 版平均；与 ens9 秩相关约 0.83，通过异构门槛） | 4x | 是 | 待回填 | **无法本地验证**（train-on-all 的 valid 被污染，只能靠提交盲测）；机理：+11% 数据 + RA 增广；check_train_on_all PASS（Spearman 0.901/0.913）；预估 98.2~98.5 |
 
 ## 提交流程规则（#6）
 
