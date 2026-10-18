@@ -77,7 +77,8 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 | 多尺度 TTA | `--img-sizes 448 512 576` | - | **0.99070** | **0.87796** | AUROC +0.00076 / AUPRC **+0.00540** | ≥+0.001/+0.005 | ✅ 值得纳入（AUPRC 过 +0.005 线，边际） |
 | mixup/cutmix | `--mixup 0.2` | 3ep 探针 / 6ep 复验 | 探针 0.98873 / **复验 0.99006** | 探针 0.85791 / 复验 0.86974 | 探针 +0.00385 / **复验 −0.00064** | AUROC≥+0.001 | ⚠️ 探针有效但主力配方复验负（0.99006 < 基线 0.99070），不纳入 |
 | focal loss | `--focal-gamma 2.0` | 3ep 热启动 | **0.98918** | **0.84375** | AUROC +0.00430 / AUPRC +0.00617 | AUROC≥+0.001 | ✅ 有效（边际，主力复验未做） |
-| RandAugment | `--randaugment 2 9` | 3ep 探针 / 6ep 复验 | 探针 0.98992 / **复验 0.99188** | 探针 0.85677 / 复验 0.87261 | 探针 +0.00504 / **复验 +0.00118** | AUROC≥+0.001 | ✅ 达标（唯一有效，多 seed 复验产出成员中） |
+| RandAugment | `--randaugment 2 9` | 3ep 探针 / 6ep 复验 | 探针 0.98992 / **复验 0.99188** | 探针 0.85677 / 复验 0.87261 | 探针 +0.00504 / **复验 +0.00118** | AUROC≥+0.001 | ✅ 达标（唯一有效） |
+| RandAugment 多 seed | seed 7 / 123 复验 | 6ep | **seed7 0.99119 / seed123 0.99154** | seed7 0.88025 / seed123 0.88388 | 均 ≥ 0.990 | 单模 ≥ 0.990 且排名相关 < 0.95 | ✅ 三 seed 全达标，probs 已交付队长评估集成 |
 | Seed ensemble | Base@384 seed7 从头训 | 6ep | **0.98801** | **0.85441** | −0.00346 vs 0.99147 | ≥追平 0.99147 | ❌ 负（seed 多样性无正收益） |
 
 > ⚠️ **判据更新（2026-10-17）**：评分口径已锁定为 **AUROC×100**（队长提交 ens8c 实测 98.15 反推），探针判据改为 **AUROC ≥ +0.001**（此前 AUPRC 判据作废）。上表 3 项训练侧探针（mixup/focal/RandAugment）均为 TTA1 val ep3 EMA，vs baseline（AUROC 0.98488 / AUPRC 0.83758，同配置同 seed 42 同 3ep 热启动）。
@@ -89,6 +90,7 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 - [x] 多尺度 TTA 结论表（#30，2026-10-16 实测回填）
 - [x] mixup / focal / RandAugment 探针（#45，2026-10-17 云 4090D 实测回填）
 - [x] mixup / RandAugment / Seed ensemble 主力配方复验（#51/#52，2026-10-17：mixup 负、Base@384 seed7 负、ra 重跑中）
+- [x] RandAugment 多 seed 复验（seed7 0.99119 / seed123 0.99154，2026-10-18：三 seed 全达标，probs 交付队长评估集成）
 
 ## A4. Issue 回填模板（每项跑完贴一条）
 
