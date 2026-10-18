@@ -528,9 +528,16 @@ def main():
             missing, unexpected = model.features.load_state_dict(enc_sd, strict=False)
             print(f"warm start (MAE backbone, {len(enc_sd)} keys) from {args.init_from}; "
                   f"missing={len(missing)} unexpected={len(unexpected)}")
-        elif isinstance(sd, dict) and ("ema" in sd or "model" in sd):
-            a_ema, a_mod = sd.get("auroc_ema", -1), sd.get("auroc", -1)
-            sd = sd["ema"] if a_ema >= a_mod else sd["model"]
+        elif isinstance(sd, dict) and ("ema" in sd or "model" in sd or "state_dict" in sd):
+            use = sd.get("use")
+            if use in sd:
+                # 瘦身/train-on-all 格式：use 字段明确指定（ema 或 model）
+                sd = sd[use]
+            elif "state_dict" in sd:
+                sd = sd["state_dict"]
+            else:
+                a_ema, a_mod = sd.get("auroc_ema", -1), sd.get("auroc", -1)
+                sd = sd["ema"] if a_ema >= a_mod else sd["model"]
             model.load_state_dict(sd, strict=True)
             print(f"warm start from {args.init_from}")
         else:
