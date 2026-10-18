@@ -80,6 +80,7 @@ python train.py --arch convnext_tiny --img-size 512 --epochs 2 --init-from <best
 | RandAugment | `--randaugment 2 9` | 3ep 探针 / 6ep 复验 | 探针 0.98992 / **复验 0.99188** | 探针 0.85677 / 复验 0.87261 | 探针 +0.00504 / **复验 +0.00118** | AUROC≥+0.001 | ✅ 达标（唯一有效） |
 | RandAugment 多 seed | seed 7 / 123 复验 | 6ep | **seed7 0.99119 / seed123 0.99154** | seed7 0.88025 / seed123 0.88388 | 均 ≥ 0.990 | 单模 ≥ 0.990 且排名相关 < 0.95 | ✅ 三 seed 全达标，probs 已交付队长评估集成 |
 | Seed ensemble | Base@384 seed7 从头训 | 6ep | **0.98801** | **0.85441** | −0.00346 vs 0.99147 | ≥追平 0.99147 | ❌ 负（seed 多样性无正收益） |
+| 测试域伪标签自训练 | `--extra-rows`（205 正 + 615 负，p≥0.90 / p≤0.02） | 4ep | 单模 **0.99162**（TTA4） | 0.87827 | +0.00092 vs hi512_v2 | 成员门槛 ≥0.990 且相关 <0.95 | ⚠️ 单模过门槛但秩相关 **0.9536** → 加入 ens9 的 ΔAUROC **−0.00002**（P(改善)=0.36），重优化权重把它压到 0 → **集成无增益，不纳入**（负结果，2026-10-18；run `convnext_small_512_1018_125725_cs_hi512_pseudo`） |
 
 > ⚠️ **判据更新（2026-10-17）**：评分口径已锁定为 **AUROC×100**（队长提交 ens8c 实测 98.15 反推），探针判据改为 **AUROC ≥ +0.001**（此前 AUPRC 判据作废）。上表 3 项训练侧探针（mixup/focal/RandAugment）均为 TTA1 val ep3 EMA，vs baseline（AUROC 0.98488 / AUPRC 0.83758，同配置同 seed 42 同 3ep 热启动）。
 
