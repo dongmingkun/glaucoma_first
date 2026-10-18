@@ -14,7 +14,7 @@
 
 > 备注：`submission_cal.csv`（`f49f2242`，B3@384 单模型校准版）与 `submission_20251015_ens3_cal.csv`（`d7f50bc4`，B3 三方集成校准版）为备选产物，未提交。
 
-| 2026-10-17（计划） | @dongmingkun | `submit_ready/submission.csv`（内部名 `submission_20251017_ens8c_cal.csv`） | 待补 | ens8c：8 成员（hi512_v2×2 + seed2 + Base@512 + Base@384 + Small@640 + B3×3）+ **全成员多尺度 TTA** + 校准 | 4x×多尺度 | 是 | 待回填 | 复合分 94.913（本地，+0.061 vs ens7） |
+| 2026-10-17 | @dongmingkun | `submit_ready/submission.csv`（内部名 `submission_20251017_ens8c_cal.csv`） | `de35987d` | ens8c：8 成员（hi512_v2×2 + seed2 + Base@512 + Base@384 + Small@640 + B3×3）+ **全成员多尺度 TTA** + 校准 | 4x×多尺度 | 是 | **98.15（复赛第 31 名；榜首 99.02）** | 复赛榜（AUROC×100）首测：valid AUROC ≈0.992 → test **0.9815**（泛化差约 −0.011） |
 
 ## 提交流程规则（#6）
 
@@ -47,6 +47,10 @@
 ## 口径判定对照（#1）—— 已揭晓：**复合指标**（2026-10-16）
 
 > **权威口径结论以本文件为准**；PROJECT_NOTES 只保留指针。
+>
+> ⚠️ **2026-10-17 起换榜（复赛）**：评分口径 = **AUROC×100**（由 ens8c 实测 98.15 与 valid/test AUROC 反推）。
+> **下方复合公式仅适用于初赛榜**；复赛的所有决策一律看 **AUROC**（判据 ≥ +0.001），并注意 valid→test 存在约 **−0.011** 的泛化差。
+> 复赛成员门槛（离线实验台实测）：单模 TTA4 AUROC ≥ 0.990 且与现有成员秩相关 < 0.95（低于 0.990 的成员会拖低集成，如 ctiny512 0.98559）。
 
 **结论**：线上分数 ≈ **0.5 × 平衡准确率@0.5 + 0.25 × AUROC + 0.25 × AUPRC**
 （等价写法：`0.5×balACC + 0.5×[0.5×(AUROC+AUPRC)]`）。三个数据点验证：
