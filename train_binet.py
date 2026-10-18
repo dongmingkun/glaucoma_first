@@ -201,7 +201,13 @@ def main():
     model = BiNet(args.arch).to(device)
     if args.init_from:
         ck = torch.load(args.init_from, map_location="cpu", weights_only=False)
-        sd = ck.get("ema") if ck.get("auroc_ema", -1) >= ck.get("auroc", -1) else ck.get("model")
+        use = ck.get("use")
+        if use in ("ema", "model") and use in ck:
+            sd = ck[use]
+        elif "state_dict" in ck:
+            sd = ck["state_dict"]
+        else:
+            sd = ck.get("ema") if ck.get("auroc_ema", -1) >= ck.get("auroc", -1) else ck.get("model")
         sd = {k: v for k, v in sd.items() if k.startswith(("features.", "avgpool.", "norm."))}
         missing, unexpected = model.load_state_dict(sd, strict=False)
         print(f"backbone 热启动: 载入 {len(sd)} 键 (missing={len(missing)}, unexpected={len(unexpected)})", flush=True)
