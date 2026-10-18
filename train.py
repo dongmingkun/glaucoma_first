@@ -445,6 +445,8 @@ def main():
     ap.add_argument("--ema-decay", type=float, default=0.999)
     ap.add_argument("--train-on-all", action="store_true", help="add valid into train, no val split (final model)")
     ap.add_argument("--init-from", default=None, help="load weights only (state_dict) to warm start")
+    ap.add_argument("--extra-rows", default=None,
+                    help="CSV(Image_name,Age,Label) 追加到训练集（伪标签/测试域自训练）；valid 仍保留用于评估")
     ap.add_argument("--select-metric", default="blend", choices=["auroc", "blend", "auprc"],
                     help="checkpoint 选择标准: auroc | blend=0.5*(auroc+auprc) | auprc")
     ap.add_argument("--tag", default="")
@@ -485,6 +487,21 @@ def main():
               f"--epochs {max(1, round(args.epochs / ratio))} (same total steps).")
         print("[train-on-all] no validation split -> val AUROC/AUPRC are MEANINGLESS for this "
               "checkpoint. Use check_train_on_all.py to compare against a reference model.")
+    if args.extra_rows:
+        extra = []
+        with open(args.extra_rows, encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                stem = r["Image_name"].rsplit(".", 1)[0]
+                try:
+                    age = float(r["Age"])
+                except (ValueError, TypeError):
+                    age = 75.0
+                age = min(max(age, 10.0), 100.0)
+                extra.append((stem, age, float(r["Label"])))
+        train_rows = train_rows + extra
+        random.Random(args.seed).shuffle(train_rows)
+        print(f"[extra-rows] +{len(extra)} pseudo/extra rows -> train rows = {len(train_rows)} "
+              f"(pos={sum(1 for r in train_rows if r[2] == 1)})")
     if args.subset:
         rng = random.Random(args.seed)
         pos = [r for r in train_rows if r[2] == 1]
@@ -497,7 +514,7 @@ def main():
     print(f"train rows={len(train_rows)} pos={npos} ({npos/max(1,len(train_rows)):.4f})")
 
     ds_tr = MixedDS(train_rows, args.img_size, cache_root=CACHE_ROOT,
-                    rot_deg=args.rot_deg, randaugment=args.randaugment) if args.train_on_all else \
+                    rot_deg=args.rot_deg, randaugment=args.randaugment) if (args.train_on_all or args.extra_rows) else \
         FundusDS("train", train_rows, args.img_size, train=True, cache_root=CACHE_ROOT,
                  rot_deg=args.rot_deg, randaugment=args.randaugment)
     dl_tr, dl_va = None, None
@@ -697,7 +714,8 @@ class MixedDS(Dataset):
         stem, age, label = self.rows[i]
         p1 = os.path.join(self.cache_root, "train", stem + ".jpg")
         p2 = os.path.join(self.cache_root, "valid", stem + ".jpg")
-        path = p1 if os.path.exists(p1) else p2
+        p3 = os.path.join(self.cache_root, "test", stem + ".jpg")   # 伪标签/测试域样本
+        path = p1 if os.path.exists(p1) else (p2 if os.path.exists(p2) else p3)
         img = Image.open(path).convert("RGB")
         s = self.img_size
         rrc = torchvision.transforms.RandomResizedCrop(
