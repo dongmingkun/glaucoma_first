@@ -29,7 +29,9 @@
 
 | 2026-10-20（计划） | @dongmingkun | `submission_20251020_ens12_cal.csv` | `2ba94378` | **ens12**（单变量实验）：ens10 配方，但 family 内 **RA 版占比 0.5→0.7**（总家族权重保持 20%；RA 版 check 0.9132 为家族最高） | 4x | 是 | 待回填 | 对照 ens10（98.82）：验证 RA 的增广泛化优势是否有效；若提升则继续向 RA 加权 |
 
-| 2026-10-20（计划） | @dongmingkun | `submission_20251020_ens13_cal.csv` | `8f25ba2a` | **ens13**（单变量）：ens9×0.80 + train+all 家族×0.20；家族从 2 成员扩到 **6 成员等权**（small@512: seed42/RA/seed7/seed123 + base@384: 普通/伪标签） | 4x | 是 | 待回填 | 对照 ens10（98.82，家族 20% 仅 2 成员）：验证「更多 data-upgraded 成员」是否加分；全部成员 check PASS（0.900-0.919） |
+| 2026-10-20（备选·未提交） | @dongmingkun | `submission_20251020_ens13_cal.csv` | `8f25ba2a` | **ens13**（单变量）：ens9×0.80 + train+all 家族×0.20；家族从 2 成员扩到 **6 成员等权**（small@512: seed42/RA/seed7/seed123 + base@384: 普通/伪标签） | 4x | 是 | 待回填 | 对照 ens10（98.82，家族 20% 仅 2 成员）：验证「更多 data-upgraded 成员」是否加分；全部成员 check PASS（0.900-0.919） |
+
+| 2026-10-20（计划） | @dongmingkun | `submission_20251020_ens14_cal.csv` | `a032068c` | **ens14**：ens9×0.80 + train+all 家族×0.20；家族扩到 **8 成员等权**（small@512: 42/RA/s7/s123 + base@384: 普通/伪标签42/伪标签s7/伪标签s123） | 4x | 是 | 待回填 | 全部成员 check PASS（0.900~0.926）；对照 ens10（98.82，家族 2 成员 @20%）：验证「更多数据升级成员」是否加分 |
 
 ## 提交流程规则（#6）
 
