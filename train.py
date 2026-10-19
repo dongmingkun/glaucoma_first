@@ -30,7 +30,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision
 from torchvision.models import (
     EfficientNet_B0_Weights, EfficientNet_B3_Weights, EfficientNet_B4_Weights,
-    ConvNeXt_Tiny_Weights, ConvNeXt_Small_Weights, ConvNeXt_Base_Weights, ResNet50_Weights,
+    ConvNeXt_Tiny_Weights, ConvNeXt_Small_Weights, ConvNeXt_Base_Weights, ConvNeXt_Large_Weights, ResNet50_Weights,
 )
 
 from paths import AGE_MEDIAN, CACHE_ROOT, CSV_ROOT, load_rows  # noqa: E402  shared, torch-free path resolution
@@ -42,6 +42,7 @@ ARCH_INFO = {
     "convnext_tiny": (torchvision.models.convnext_tiny, ConvNeXt_Tiny_Weights.DEFAULT, 768),
     "convnext_small": (torchvision.models.convnext_small, ConvNeXt_Small_Weights.DEFAULT, 768),
     "convnext_base": (torchvision.models.convnext_base, ConvNeXt_Base_Weights.DEFAULT, 1024),
+    "convnext_large": (torchvision.models.convnext_large, ConvNeXt_Large_Weights.DEFAULT, 1536),
     "resnet50": (torchvision.models.resnet50, ResNet50_Weights.DEFAULT, 2048),
 }
 
