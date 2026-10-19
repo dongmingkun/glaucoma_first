@@ -32,6 +32,16 @@
 | 2026-10-20（备选·未提交） | @dongmingkun | `submission_20251020_ens13_cal.csv` | `8f25ba2a` | **ens13**（单变量）：ens9×0.80 + train+all 家族×0.20；家族从 2 成员扩到 **6 成员等权**（small@512: seed42/RA/seed7/seed123 + base@384: 普通/伪标签） | 4x | 是 | 待回填 | 对照 ens10（98.82，家族 20% 仅 2 成员）：验证「更多 data-upgraded 成员」是否加分；全部成员 check PASS（0.900-0.919） |
 
 | 2026-10-20（计划） | @dongmingkun | `submission_20251020_ens14_cal.csv` | `a032068c` | **ens14**：ens9×0.80 + train+all 家族×0.20；家族扩到 **8 成员等权**（small@512: 42/RA/s7/s123 + base@384: 普通/伪标签42/伪标签s7/伪标签s123） | 4x | 是 | 待回填 | 全部成员 check PASS（0.900~0.926）；对照 ens10（98.82，家族 2 成员 @20%）：验证「更多数据升级成员」是否加分 |
+| 2026-10-21（备选·未提交） | @dongmingkun | `submission_20251021_ens16_w25_cal.csv` | `e44c5d6c` | **ens16_w25**（单变量）：ens14 的 8 成员家族不变，家族总权重 **20%→25%**（ens9×0.75 + family×0.25） | 4x | 是 | 待回填 | 对照 ens14/ens10：固定家族构成、只测权重；ens11（40%，多变量混杂）98.80 → 本档用于定位 20–40% 之间的峰值 |
+
+### 2026-10-19 本地负结果（未提交）
+
+- **staged 续训的 small@512 × train+all × 伪标签成员被拒**（run `convnext_small_512_1019_163540_cs_hi512_all_pseudo_b_cont3`，最终 EMA）。
+  - 血统：`hi512_v2` → `_all_pseudo`(1ep @3e-5) → `_b`(3ep @3e-5) → `_cont3`(3ep @1.5e-5)，即 **3 次 LR schedule 重启**、共 7 个有效 epoch。
+  - `check_train_on_all` vs hi512_v2：**Spearman 0.842（<0.90 → REVIEW）**，mean 漂移 16.1%，top200 重叠 0.940；ep4=0.792 / ep5=0.840 / 最终=0.842，越训越偏。
+  - 与 ens9 秩相关 **0.739**、与 ens14 **0.756** —— 远低于 0.95，属于「漂移型」而非「互补型」（对比：正常 train+all 成员 0.81–0.91）。
+  - 分区域诊断：ref top200/500/1000 内 Spearman 0.905/0.937/0.903（AUROC 相关区域仍一致），全局下降主要来自**负样本内部排序**（AUROC 不关心）；但按现行门槛仍拒绝，且 1/9×20% 权重对集成影响 <0.01，不值得冒险。
+  - 教训：train+all+pseudo 必须**单次连续 schedule**（如 #65 base@384 7ep 一次跑完，check 0.9022 PASS）；对已收敛模型做 LR 重启式续训会把排序推偏。
 
 ## 提交流程规则（#6）
 
