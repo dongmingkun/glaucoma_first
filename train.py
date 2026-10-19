@@ -53,6 +53,13 @@ VIT_ARCH = {
     "vit_large": ("vit_large_patch16_224", 1024),
 }
 
+# timm CNN / hybrid 骨干（异构多样性成员）。tname -> (timm 模型名, 特征维)。
+# 统一走 forward_features + forward_head(pre_logits=True)，不需要 dynamic_img_size。
+TIMM_ARCH = {
+    "swin_base": ("swin_base_patch4_window12_384", 1024),   # ImageNet 原生 384
+    "convnextv2_base": ("convnextv2_base", 1024),
+}
+
 
 RETFOUND_CKPT = os.environ.get("RETFOUND_CKPT",
                                    r"D:\glaucoma_work\weights\RETFound_mae_natureCFP.pth")
@@ -113,6 +120,21 @@ class FundusNet(nn.Module):
                 self.features = timm.create_model(tname, pretrained=pretrained, num_classes=0,
                                                   global_pool="token", dynamic_img_size=True)
             self.avgpool = None      # ViT 走 forward_head 池化
+            self.norm = None
+            self.feat_dim = feat_dim
+            self.age_mlp = nn.Sequential(
+                nn.Linear(1, age_dim), nn.SiLU(), nn.Linear(age_dim, age_dim), nn.SiLU())
+            self.head = nn.Sequential(
+                nn.Linear(feat_dim + age_dim, 512), nn.BatchNorm1d(512), nn.SiLU(),
+                nn.Dropout(dropout), nn.Linear(512, 1))
+            return
+        if arch in TIMM_ARCH:
+            # timm 异构骨干（swin_base / convnextv2_base）：forward_features -> forward_head
+            import timm
+            tname, feat_dim = TIMM_ARCH[arch]
+            self.features = timm.create_model(tname, pretrained=pretrained, num_classes=0,
+                                              global_pool="avg")
+            self.avgpool = None
             self.norm = None
             self.feat_dim = feat_dim
             self.age_mlp = nn.Sequential(
@@ -417,7 +439,7 @@ def evaluate(model, loader, device, crit):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--arch", default="efficientnet_b3",
-                    choices=list(ARCH_INFO) + ["retfound_vitl"] + list(VIT_ARCH))
+                    choices=list(ARCH_INFO) + ["retfound_vitl"] + list(VIT_ARCH) + list(TIMM_ARCH))
     ap.add_argument("--img-size", type=int, default=384)
     ap.add_argument("--epochs", type=int, default=10)
     ap.add_argument("--batch-size", type=int, default=32)
