@@ -1,1 +1,45 @@
-# Issue #77 — [P2][训练] 异构架构多样性：ViT-B@384（train-only 探路，交付 test 概率）\n\n> 本文件由 GitHub issue #77 原文同步（https://github.com/dongmingkun/glaucoma_first/issues/77），供离线助手读取。\n\n---\n\n## 背景\n\n权重线已关闭（0/20/40/100% = 98.15/98.82/98.80/98.73，峰值 20%）。剩余提分只能靠**异构多样性**。Yulingling-sc 在跑 Swin-B（#76），本工单并行跑另一条真正不同的归纳偏置：ViT-B/16。\n\n代码无需改动：`train.py` 已支持 `--arch vit_base`（timm `vit_base_patch16_224`，`dynamic_img_size=True`，ImageNet 初始化）。\n\n## 训练配置（train-only，valid 干净）\n\n```bash\npython train.py --arch vit_base --img-size 384 --cache-root cache512 \n  --epochs 8 --batch-size 8 --accum 6 --lr 5e-5 --head-lr 2.5e-4 \n  --warmup-frac 0.10 --loader workers --workers 3 \n  --seed 42 --tag vitb_384\n```\n\n| 项 | 值 |\n|---|---|\n| 架构 | ViT-B/16 @384（~86M，ImageNet 初始化） |\n| 显存/耗时估计 | 8–10G / 每 epoch ≈ 10–14 min（4090D），8ep ≈ 1.8 h |\n| 备注 | Transformer 对 LR 敏感，已用 5e-5 + 10% warmup；若发散再降到 3e-5 |\n\n## 交付（无论分数高低都要交）\n\n1. 每 epoch valid AUROC / EMA AUROC / val_loss（贴本 issue）。\n2. `infer.py --ckpt <best.pt> --split valid --tta 4` → valid TTA4 AUROC。\n3. `infer.py --ckpt <best.pt> --split test --tta 4 --out vitb_384_test_probs_tta4.csv` → 5855 行未校准概率，挂 Release。\n\n> 单模门槛是 valid TTA4 ≥0.990；但**即使 0.98–0.99 也请交付 test 概率** —— train-only 成员的 valid 是干净的，队长会离线算它与现有集成的真实增益（脚本已就绪），不靠猜。\n\n## 阶段2（等队长确认有效后）\n\n若 valid 集成增益为正，再做 train+all+pseudo（单次连续 schedule，禁止 LR 重启式续训），同 #76 的阶段2 规则。\n\n## 交付物\n\n- 阶段1：训练曲线 + valid TTA4 + test 概率 CSV。\n- 阶段2（若触发）：check 输出 + test 概率 + fp16 权重。\n\n指派人：@JiahaoChen-star-JJ（云端）。与 #76 互不冲突，先跑阶段1即可。\n
+# Issue #77 — [P2][训练] 异构架构多样性：ViT-B@384（train-only 探路，交付 test 概率）
+
+> 本文件由 GitHub issue #77 原文同步（https://github.com/dongmingkun/glaucoma_first/issues/77），供离线助手读取。
+
+---
+
+## 背景
+
+权重线已关闭（0/20/40/100% = 98.15/98.82/98.80/98.73，峰值 20%）。剩余提分只能靠**异构多样性**。Yulingling-sc 在跑 Swin-B（#76），本工单并行跑另一条真正不同的归纳偏置：ViT-B/16。
+
+代码无需改动：`train.py` 已支持 `--arch vit_base`（timm `vit_base_patch16_224`，`dynamic_img_size=True`，ImageNet 初始化）。
+
+## 训练配置（train-only，valid 干净）
+
+```bash
+python train.py --arch vit_base --img-size 384 --cache-root cache512 \
+  --epochs 8 --batch-size 8 --accum 6 --lr 5e-5 --head-lr 2.5e-4 \
+  --warmup-frac 0.10 --loader workers --workers 3 \
+  --seed 42 --tag vitb_384
+```
+
+| 项 | 值 |
+|---|---|
+| 架构 | ViT-B/16 @384（~86M，ImageNet 初始化） |
+| 显存/耗时估计 | 8–10G / 每 epoch ≈ 10–14 min（4090D），8ep ≈ 1.8 h |
+| 备注 | Transformer 对 LR 敏感，已用 5e-5 + 10% warmup；若发散再降到 3e-5 |
+
+## 交付（无论分数高低都要交）
+
+1. 每 epoch valid AUROC / EMA AUROC / val_loss（贴本 issue）。
+2. `infer.py --ckpt <best.pt> --split valid --tta 4` → valid TTA4 AUROC。
+3. `infer.py --ckpt <best.pt> --split test --tta 4 --out vitb_384_test_probs_tta4.csv` → 5855 行未校准概率，挂 Release。
+
+> 单模门槛是 valid TTA4 ≥0.990；但**即使 0.98–0.99 也请交付 test 概率** —— train-only 成员的 valid 是干净的，队长会离线算它与现有集成的真实增益（脚本已就绪），不靠猜。
+
+## 阶段2（等队长确认有效后）
+
+若 valid 集成增益为正，再做 train+all+pseudo（单次连续 schedule，禁止 LR 重启式续训），同 #76 的阶段2 规则。
+
+## 交付物
+
+- 阶段1：训练曲线 + valid TTA4 + test 概率 CSV。
+- 阶段2（若触发）：check 输出 + test 概率 + fp16 权重。
+
+指派人：@JiahaoChen-star-JJ（云端）。与 #76 互不冲突，先跑阶段1即可。

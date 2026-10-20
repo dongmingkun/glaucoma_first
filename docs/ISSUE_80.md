@@ -1,1 +1,42 @@
-# Issue #80 — [P2][训练] 增广多样性：Base@384 × RandAugment（train-only → 队长确认增益后再 train+all）\n\n> 本文件由 GitHub issue #80 原文同步（https://github.com/dongmingkun/glaucoma_first/issues/80），供离线助手读取。\n\n---\n\n## 背景\n\nSmall@512 的 RA 版（#8）是家族里 check 最高的成员（0.9132），但 Base@384 还没有 RA 版。本工单只改**增广**（单变量：`--randaugment 2 9`），补齐这个组合。\n\n## 阶段1：train-only（valid 干净）\n\n```bash\npython train.py --arch convnext_base --img-size 384 --cache-root cache512 \n  --epochs 8 --batch-size 12 --accum 4 --lr 1e-4 --head-lr 5e-4 \n  --randaugment 2 9 --loader workers --workers 3 \n  --seed 42 --tag cnxb_384_ra\n```\n\n对照基线：base@384（无 RA，valid TTA4 **0.99147**）。除 `--randaugment 2 9` 外全部相同。\n\n### 交付（无论分数高低都要交）\n1. 每 epoch valid AUROC / EMA AUROC / val_loss（贴本 issue）。\n2. `infer.py --ckpt <best.pt> --split valid --tta 4 --out cnxb_384_ra_valid_tta4.csv`。\n3. `infer.py --ckpt <best.pt> --split test --tta 4 --out cnxb_384_ra_test_probs_tta4.csv`。\n\n> 门槛：valid TTA4 ≥ 0.990（低于也交付概率）。队长用干净 valid 算集成增益。\n\n## 阶段2（队长确认增益 > 0 后再跑）\n\n```bash\npython train.py --arch convnext_base --img-size 384 --cache-root cache512 \n  --epochs 8 --batch-size 12 --accum 4 --lr 3e-5 --head-lr 1.5e-4 \n  --randaugment 2 9 --loader workers --workers 3 --seed 42 \n  --train-on-all --extra-rows pseudo/pseudo_test_ens10.csv \n  --init-from runs/cnxb_384_ra/best.pt --tag cnxb_384_ra_all_pseudo\n```\n\n- 单次连续 schedule；`check_train_on_all` 以阶段1 best.pt 为 ref，Spearman ≥0.90。\n- 通过后交付 test 概率 + fp16 权重。\n\n指派人：@JiahaoChen-star-JJ（云端）。优先级低于 #78，可在 #77/#78 之后跑。\n
+# Issue #80 — [P2][训练] 增广多样性：Base@384 × RandAugment（train-only → 队长确认增益后再 train+all）
+
+> 本文件由 GitHub issue #80 原文同步（https://github.com/dongmingkun/glaucoma_first/issues/80），供离线助手读取。
+
+---
+
+## 背景
+
+Small@512 的 RA 版（#8）是家族里 check 最高的成员（0.9132），但 Base@384 还没有 RA 版。本工单只改**增广**（单变量：`--randaugment 2 9`），补齐这个组合。
+
+## 阶段1：train-only（valid 干净）
+
+```bash
+python train.py --arch convnext_base --img-size 384 --cache-root cache512 \
+  --epochs 8 --batch-size 12 --accum 4 --lr 1e-4 --head-lr 5e-4 \
+  --randaugment 2 9 --loader workers --workers 3 \
+  --seed 42 --tag cnxb_384_ra
+```
+
+对照基线：base@384（无 RA，valid TTA4 **0.99147**）。除 `--randaugment 2 9` 外全部相同。
+
+### 交付（无论分数高低都要交）
+1. 每 epoch valid AUROC / EMA AUROC / val_loss（贴本 issue）。
+2. `infer.py --ckpt <best.pt> --split valid --tta 4 --out cnxb_384_ra_valid_tta4.csv`。
+3. `infer.py --ckpt <best.pt> --split test --tta 4 --out cnxb_384_ra_test_probs_tta4.csv`。
+
+> 门槛：valid TTA4 ≥ 0.990（低于也交付概率）。队长用干净 valid 算集成增益。
+
+## 阶段2（队长确认增益 > 0 后再跑）
+
+```bash
+python train.py --arch convnext_base --img-size 384 --cache-root cache512 \
+  --epochs 8 --batch-size 12 --accum 4 --lr 3e-5 --head-lr 1.5e-4 \
+  --randaugment 2 9 --loader workers --workers 3 --seed 42 \
+  --train-on-all --extra-rows pseudo/pseudo_test_ens10.csv \
+  --init-from runs/cnxb_384_ra/best.pt --tag cnxb_384_ra_all_pseudo
+```
+
+- 单次连续 schedule；`check_train_on_all` 以阶段1 best.pt 为 ref，Spearman ≥0.90。
+- 通过后交付 test 概率 + fp16 权重。
+
+指派人：@JiahaoChen-star-JJ（云端）。优先级低于 #78，可在 #77/#78 之后跑。
