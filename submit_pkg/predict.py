@@ -179,14 +179,23 @@ def load_model(ckpt_path, device):
     return model, {"arch": arch, "img_size": img_size, "cache_size": cache_size, "use": use}
 
 
-def run_group(paths, ages, members, device, tta, batch_size):
+def run_group(paths, ages, members, device, tta, batch_size, prep_workers=8):
     """Run all models sharing one cache_size, preprocessing each image ONCE.
 
     members: list of (model, meta, weight). Returns a list of per-model prob arrays.
     """
+    from concurrent.futures import ThreadPoolExecutor
+
     cache_size = members[0][1]["cache_size"]
     draft = max(768, int(cache_size * 1.5))
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[tta]
+    pool = ThreadPoolExecutor(max_workers=max(1, prep_workers))
+
+    def _prep(path):
+        # PIL decode + numpy crop release the GIL, so threads actually scale.
+        return torchvision.transforms.functional.to_tensor(
+            load_fundus_crop(path, size=cache_size, draft=draft))
+
     mean = torch.tensor([0.485, 0.456, 0.406], device=device).view(1, 3, 1, 1)
     std = torch.tensor([0.229, 0.224, 0.225], device=device).view(1, 3, 1, 1)
     age_all = torch.tensor([[(a - AGE_MEDIAN) / 15.0] for a in ages],
@@ -195,14 +204,25 @@ def run_group(paths, ages, members, device, tta, batch_size):
     n = len(paths)
     acc = [np.zeros(n, dtype=np.float64) for _ in members]
 
+    # Bounded lookahead: the pool decodes/crops ahead while the GPU runs, so the
+    # end-to-end cost is ~max(preprocess, forward) instead of their sum.
+    from collections import deque
+
+    src = iter(range(n))
+    lookahead = max(batch_size, prep_workers * 2) * 2
+    futs = deque()
+    for _ in range(min(lookahead, n)):
+        i = next(src)
+        futs.append(pool.submit(_prep, paths[i]))
+
     for start in range(0, n, batch_size):
         idx = list(range(start, min(start + batch_size, n)))
-        # ---- preprocessing de-dup: decode+crop ONCE for this batch ----
-        base = []
-        for i in idx:
-            img = load_fundus_crop(paths[i], size=cache_size, draft=draft)
-            base.append(torchvision.transforms.functional.to_tensor(img))
-        base = torch.stack(base).to(device)  # (B, 3, cache_size, cache_size)
+        # ---- preprocessing de-dup: decode+crop ONCE for each image ----
+        base = torch.stack([futs.popleft().result() for _ in idx]).to(device)
+        for _ in idx:
+            j = next(src, None)
+            if j is not None:
+                futs.append(pool.submit(_prep, paths[j]))
         age_b = age_all[idx]
 
         for mi, (model, meta, _w) in enumerate(members):
@@ -236,6 +256,8 @@ def main():
     ap.add_argument("--out", default="submission.csv")
     ap.add_argument("--tta", type=int, default=4, choices=[1, 2, 4])
     ap.add_argument("--batch-size", type=int, default=64)
+    ap.add_argument("--prep-workers", type=int, default=8,
+                    help="threads for decode+crop (PIL/numpy release the GIL)")
     args = ap.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -289,7 +311,8 @@ def main():
     t_start = time.time()
     ens = np.zeros(len(names), dtype=np.float64)
     for cache_size, members in groups.items():
-        probs = run_group(paths, ages, members, device, args.tta, args.batch_size)
+        probs = run_group(paths, ages, members, device, args.tta, args.batch_size,
+                          args.prep_workers)
         for (m, meta, w), p in zip(members, probs):
             ens += w * p
             print(f"  model {meta['arch']} (cache{cache_size}) done "

@@ -1,97 +1,66 @@
-# 复赛提交包说明
+# 复赛提交包说明（2026-10-20 更新）
 
-## 内容
-- `predict.py`：自包含推理脚本（只需 torch/torchvision/pillow/numpy，官方镜像内全部自带）
-- `model_weights.pt`：训练好的模型权重（含 ema/model 两套 + 元信息，由训练脚本的 best.pt 直接拷贝）
-- 本 README
+## 内容（权重合计 452.4MB ≤ 500MB）
 
-## 官方环境（与本地训练环境一致）
-- GPU: NVIDIA T4 16GB；CUDA 12.8 + cuDNN 9
-- Python 3.12；PyTorch 2.10.0 + torchvision 0.25.0
-- 模型大小：单模型 ≈ 50MB（efficientnet_b3）~ 350MB（convnext_base），多模型合计 <500MB 限制（fp16 瘦身见 `docs/WEIGHTS.md`）
+| 文件 | 大小 | 说明 |
+|---|---|---|
+| `predict.py` | 14KB | 自包含推理脚本（多线程预处理 + 有界预取 + 多模型加权） |
+| `cb384.pt` | 176.3MB | ConvNeXt-Base@384，train-only，valid TTA4 AUROC 0.99147，cache512 |
+| `cnxb_384_all_pseudo.pt` | 176.3MB | ConvNeXt-Base@384，train+all + 测试域伪标签，check PASS 0.9022，cache512 |
+| `cs_hi512_all_ra.pt` | 99.8MB | ConvNeXt-Small@512，train+all + RandAugment，check PASS 0.9132，cache512 |
 
-## 延迟红线与推荐配置（≤100ms 单图端到端）
+三个成员同一 cache 档位（512），每张图只解码/裁剪一次。
 
-| 配置 | GPU 延迟（T4 估算）| 预处理 | 单图端到端 | 判定 |
-|---|---|---|---|---|
-| 3 模型 + TTA4 | ~115ms | ~40ms | **~155ms** | ❌ 超标 |
-| 2 模型 + TTA4 | ~85ms | ~30ms | ~115ms | ⚠️ 临界 |
-| **2 模型 + TTA1（推荐）** | ~35ms | ~30ms | **~75ms** | ✅ 合规 |
+## 推荐命令（3 模型 + TTA1）
 
-**推荐复赛配置**（hi512_v2×2 + Base，`--tta 1`）：
 ```bash
 python predict.py \
   --images /path/to/test_images \
   --csv /path/to/test.csv \
-  --weights cs_hi512_v2.pt cs_hi512_v2.pt cnxb.pt --blend 1 1 1 \
-  --tta 1 \
-  --calib-shift <logit常数> \
+  --weights cb384.pt cnxb_384_all_pseudo.pt cs_hi512_all_ra.pt \
+  --blend 0.5 0.25 0.25 \
+  --tta 1 --batch-size 32 --prep-workers 8 \
   --out submission.csv
 ```
-> 若实测 p95 仍超 100ms，进一步降级：减少集成成员、或降低输入分辨率。
 
-## 用法
+- **实测延迟**（RTX 5060 Laptop，TTA1，3 模型）：**42.9 ms/图**（5855 张 251s）。
+- T4 估算：前向约慢 1.5–2× → 预计 **70–90 ms/图**；若实测 p95 超 100ms，用下面的降级配置。
+- 预处理已优化：JPEG draft（512 缓存 → 768）+ 圆形视野 bbox + 居中方形 + BICUBIC；
+  `--prep-workers 8` 实测把解码/裁剪从 64 → 21 ms/图（1→8 线程），并与 GPU 前向重叠。
 
-### 单模型
+## 降级配置（2 模型，权重 352.6MB）
+
 ```bash
 python predict.py \
   --images /path/to/test_images \
   --csv /path/to/test.csv \
-  --weights model_weights.pt \
+  --weights cb384.pt cnxb_384_all_pseudo.pt \
+  --blend 0.65 0.35 --tta 1 --batch-size 32 --prep-workers 8 \
   --out submission.csv
 ```
 
-### 多模型集成（加权概率平均）
-```bash
-python predict.py \
-  --images /path/to/test_images \
-  --csv /path/to/test.csv \
-  --weights cnxs_512.pt cnxb_384.pt b3_384.pt b3_448.pt b3_512.pt \
-  --blend 1 0.4 0.2 0.2 0.2 \
-  --out submission.csv
-```
+## 与线上提交的关系（重要）
 
-### 多模型 + 烘焙校准
-```bash
-# --calib-shift 为 calibrate_submission.py 在 valid 上求得的 logit 偏移常数
-# （单调平移，不改变排序，只把最优工作点对准 0.5，与线上口径一致）
-python predict.py \
-  --images /path/to/test_images \
-  --csv /path/to/test.csv \
-  --weights a.pt b.pt c.pt --blend 1 0.8 0.5 \
-  --calib-shift 2.214 \
-  --out submission.csv
-```
-
-参数：
-- `--weights`：一个或多个 `.pt`（多模型时按 `--blend` 加权概率平均）
-- `--blend`：与 `--weights` 一一对应的权重（默认等权，自动归一化）
-- `--calib-shift`：烘焙校准的 logit 偏移常数（默认 0，即不校准）
-- `--tta 4`（默认）：4 个翻转变体平均；**复赛推荐 `--tta 1`**（延迟红线）
-- `--batch-size 64`：可按机器/显存调整（768 缓存模型较大时建议下调）
+- 线上最佳 **98.82** 来自 9 成员 × TTA4 的集成，权重合计超出 500MB/100ms 约束；
+  本包是**合规子集**（3 模型 TTA1），与 ens10 的排序相关约 0.94，预期分数略低。
+- 若官方复赛只校验格式/可复现性而不重新打分，最终仍以线上最佳 CSV 为准；
+  若官方用本包重跑隐藏测试集，则以本包分数为准。两种口径都保持本包合规。
 
 ## 输出格式
-UTF-8 CSV，三列：`Image_name,Probability,Pred_Label`（Probability ∈ [0,1]，Pred_Label 以 0.5 为阈值）
+
+UTF-8 CSV，三列：`Image_name,Probability,Pred_Label`（Probability ∈ [0,1]，
+`Pred_Label` 以 0.5 为阈值；复赛指标为 AUROC，阈值/校准不影响得分）。
 
 ## 设计说明
-- **多架构**：`predict.py` 从每个 checkpoint 的 `arch` 字段自动构建模型，支持
-  `efficientnet_b0/b3/b4`、`convnext_tiny/small/base`、`resnet50`（与训练脚本一致）
-- **每个模型自己的预处理**：`img_size` 和 `cache_size`（512 vs 768）均从 checkpoint 元信息推断，
-  768 缓存模型（如 Small@512）会自动用 768 方图裁剪再 resize 到输入尺寸，与训练时一致
-- **预处理去重（#20）**：同 `cache_size` 的模型共享一次解码+裁剪（而非每模型×每翻转各做一次），
-  翻转变体在张量上用 `torch.flip` 完成，避免回到 PIL
-- **draft 尺度对齐（#20）**：JPEG draft = `max(768, cache_size*1.5)`（512 缓存→768、768 缓存→1152），
-  与训练缓存档位一致，概率漂移从 ~0.008 压到 ~1e-4
-- **自包含**：脚本内部实现眼底裁剪（阈值找圆形视野 bbox → 居中方形 → cache_size → resize），
-  不依赖训练时的任何缓存文件
 
-## 已验证
-- [x] 本地 RTX 5060 上单模型全流程跑通（见项目根目录 infer.py 的验证记录）
-- [ ] 多模型 + 烘焙校准在官方 docker 镜像内实测（T4 / Python 3.12）— 待权重与 logit 常数就绪后执行
-- [ ] 预处理去重 + 张量翻转的延迟实测（p50/p95）与概率一致性（±1e-3）— 需 T4 环境
+- **自包含**：脚本内部实现眼底裁剪，不依赖训练缓存；权重含 `arch/img_size/cache_size/use` 元信息。
+- **选权**：尊重 checkpoint 的 `use` 字段（train+all 权重为 `ema`）。
+- **多架构**：支持 `efficientnet_b0/b3/b4`、`convnext_tiny/small/base`、`resnet50`。
+- **年龄**：缺失或异常（<1 或 >110）用训练中位数 58；正常值 clip 到 [10,100]。
+- **多线程**：`--prep-workers`（默认 8）；PIL/numpy 释放 GIL，热核数超过 8 后收益趋平。
+- **有界预取**：解码/裁剪与 GPU 前向流水线重叠，端到端 ≈ max(预处理, 前向) 而非两者之和。
 
-## 注意
-- ⛔ **合规红线**：本提交包与任何提交文件**禁止包含 RetFound 系列权重**（外部视网膜数据预训练，与"仅可用主办方数据"规则冲突；仅限内部消融参考，2026-10-16 决策）。提交模型一律为 ConvNeXt / EfficientNet 系列
-- 若官方测试图片命名或路径结构与本地不同，`predict.py` 会按 `Image_name` 的主文件名自动匹配 `.JPG/.jpg/.jpeg/.png/.PNG` 扩展名
-- 年龄列缺失或异常（<1 或 >110）时用训练中位数 58 代替，与训练逻辑一致
-- 多模型会增加端到端耗时（每模型一次前向），若单图 p95 超 100ms，降级顺序：`--tta 4→1` → 减少集成成员 → 降低输入分辨率
+## 合规
+
+- 全部权重为 ConvNeXt，仅用主办方数据训练；**不含 RetFound 或任何外部医学预训练权重**。
+- 无外部标注数据、无外部标签。
