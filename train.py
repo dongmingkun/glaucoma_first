@@ -58,6 +58,8 @@ VIT_ARCH = {
 TIMM_ARCH = {
     "swin_base": ("swin_base_patch4_window12_384", 1024),   # ImageNet 原生 384
     "convnextv2_base": ("convnextv2_base", 1024),
+    # ImageNet-22k 预训练（通用初始化，非医学数据）：更强的起点，单变量对照 ImageNet-1k
+    "convnext_base_22k": ("convnext_base.fb_in22k_ft_in1k", 1024),
 }
 
 
