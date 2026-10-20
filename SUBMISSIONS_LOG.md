@@ -60,6 +60,15 @@
 3. **再次提交前**：确认上一次结果已回填，避免重复提交浪费配额。**官方配额为每天 2 次**（PROJECT_NOTES 赛题要点，2026-10-14；本台账此前写“每天仅 1 次”为保守口径，即日起按 2 次规划）：每天至少留 1 次给「有真实增益上限」的候选，另 1 次可用于决定性实验。
 4. **任何人不手工改 CSV**：要改就改 checkpoint/权重，重跑 `make_submission.py`。
 5. **合规红线**：提交文件**禁止包含 RetFound 系列权重**（外部视网膜数据预训练，与"仅可用主办方数据"规则冲突；仅限内部消融参考，2026-10-16 决策）。提交一律走 ConvNeXt / EfficientNet 集成。
+6. **打包规范（2026-10-20 起，命名按要求）**：每次候选提交统一用
+   `python package_submission.py --csv <候选> --name <标签> [--expected <分>] [--include-package]`
+   生成 `D:/glaucoma_work/submissions/<候选内部名>/`：
+   - `submission.csv` —— **上传平台的唯一文件名（规则要求）**；
+   - `<候选内部名>.csv` —— 同内容，保留 `submission_<日期>_<标签>_cal.csv` 追溯名；
+   - `manifest.md` +（可选）`package/`；
+   - zip 命名为 `<候选内部名>.zip`。
+   脚本先校验 5855 行/列名/顺序/概率范围/Pred_Label 一致性，以及包体 ≤500MB；平台上传一律用包内 `submission.csv`，
+   zip 与 csv 的 md5 一并登记到本台账。
 
 ## 权重备份命名规范（#6）
 
