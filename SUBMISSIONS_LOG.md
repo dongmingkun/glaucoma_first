@@ -36,7 +36,9 @@
 | 2026-10-20 | @dongmingkun | `submission_20251020_ens18_family_cal.csv` | `b754939a` | **ens18_family**（权重端点）：8 成员 train+all 家族 **100%**（无 ens9 成分） | 4x | 是 | **98.73（−0.09 vs ens10）** | ❌ **权重线关闭**：0% 98.15 / 20% 98.82 / 40% 98.80（异构成）/ 100% 98.73 → 峰值在 **20%** 附近。混合同时高于两个成分（98.82 > 98.15 与 98.73），说明增益来自**多样性**而非家族绝对强度；继续调权重不再有空间，只能靠新成员/新架构增加多样性 |
 | 2026-10-21 | @dongmingkun | `submission_20251021_ens20_swin_cal.csv` | `d9c3b212` | **ens20_swin**：base = ens9×0.65 + **Swin-B@384 16ep×0.35**，再与 8 成员 train+all 家族×0.20 混合 | 4x | 是 | **98.81（−0.01 vs ens10）** | ❌ **valid 增益未迁移**：Swin 在干净 valid 上 +0.00057（P=0.91），但线上 98.81 与 98.82 在 ±0.05 噪声内不可区分。结论：+0.0005 量级的 valid 增益不足以稳定迁移到 test；**Swin 阶段2 取消**，不再追加算力。最佳仍为 ens10（98.82） |
 | 2026-10-21（备选·未提交） | @dongmingkun | `submission_20251021_ens16_w25_cal.csv` | `e44c5d6c` | **ens16_w25**（单变量）：ens14 的 8 成员家族不变，家族总权重 **20%→25%**（ens9×0.75 + family×0.25） | 4x | 是 | 待回填 | 与 f40 同属权重阶梯，优先级低于 ens17_f40（步长太小、信息量低） |
-| 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens21_swin2_cal.csv` | `fb4a750a` | **ens21_swin2**：base = ens9×0.65 + avg(Swin 阶段1, Swin train+all v3)×0.35，再混 8 成员家族×0.20 | 4x | 是 | 待回填 | 用阶段2（train+all，check 0.9066 PASS）替换一半阶段1 Swin；v3 的 valid 已污染，权重沿用阶段1 的 0.35；与 ens20_swin 排序相关 0.9966（13 张翻标签）→ 云端 seed 结果未到时作 10-22 备选 |
+| 2026-10-22（计划） | @dongmingkun | `submission_20251022_ens22_swinv3_cal.csv` | `51034aec` | **ens22_swinv3**（冲 98.9 主候选）：base = ens9×0.65 + **Swin train+all v3×0.35**（全量数据升级 Swin），再混 8 成员家族×0.20 | 4x | 是 | 待回填 | v3 是 train+all+pseudo（check 0.9066 PASS，与 ens9 相关 0.7802），把数据升级暴露拉满；与 ens21 排序相关 0.996；最终评审取最高分，失败不会拉低 98.82 |
+| 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens21_swin2_cal.csv` | `fb4a750a` | **ens21_swin2**：base = ens9×0.65 + avg(Swin 阶段1, Swin train+all v3)×0.35，再混 8 成员家族×0.20 | 4x | 是 | 待回填 | 半对冲版本：一半保留已验证的 stage1，一半用 v3 数据升级；若 ens22 风险偏高可改交此版 |
+| 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens23_swinv3w30_cal.csv` | `118af0c1` | **ens23_swinv3w30**：同 ens22 但 v3 权重 0.35→0.30 | 4x | 是 | 待回填 | 更保守的 v3 暴露；与 ens21 排序相关 0.9961 |
 
 ### 2026-10-19 本地负结果（未提交）
 
