@@ -8,6 +8,7 @@
 
 | 权重文件（点击下载） | arch | img_size | cache-root | TTA4 AUROC | TTA4 AUPRC | 用途 |
 |---|---|---|---|---|---|---|
+| [`swinb_384_e16_s7_test_probs_tta4.csv`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/swinb_384_e16_s7_test_probs_tta4.csv) | swinb_384_e16_s7 | 384 | cache512 | 0.99189 | — | Swin-B@384 seed7 复跑（验证 Swin 线增量） |
 | [`swinb_384_all_v3_fp16.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/swinb_384_all_v3_fp16.pt) | swin_base | 384 | cache512 | —（train-on-all，valid 污染不报） | — | ⭐ 阶段2 train-on-all 异构成员（Swin-B@384，Spearman 0.9066 PASS）— 待集成 |
 | [`convnext_small_512_cache768_1016_auprc0.8752.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_512_cache768_1016_auprc0.8752.pt) | convnext_small | 512 | **cache768** | 0.99085 | **0.87520** | ⭐ hi512_v2（续训 6ep）— **#13 的 640 热启动用它** |
 | [`convnext_small_512_cache768_1016_seed2_auprc0.8750.pt`](https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_512_cache768_1016_seed2_auprc0.8750.pt) | convnext_small | 512 | **cache768** | **0.99064** | **0.87503** | ⭐ seed2 多样性成员（seed 7 热启动 hi512_v2，6ep，云 4090D）— 待集成确认 |
