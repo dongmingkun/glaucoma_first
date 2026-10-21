@@ -55,21 +55,21 @@
 
 ### 2.4 复赛包状态（源自 `submit_pkg/README.md` + PR #89/#81）
 
-- **包内容**：`predict.py`（自包含推理，仅依赖 torch/torchvision/pillow/numpy）+ `model_weights.pt`（含 ema/model 双套 + 元信息）。
+- **包内容**：`predict.py`（自包含推理，仅依赖 torch/torchvision/pillow/numpy）+ 三个 fp16 单份权重（`cb384.pt` / `cnxb_384_all_pseudo.pt` / `cs_hi512_all_ra.pt`，合计 **452.48MB**）。
 - **环境**：GPU NVIDIA T4 16GB；CUDA 12.8 + cuDNN 9；Python 3.12；PyTorch 2.10.0 + torchvision 0.25.0。
-- **官方环境实测**：PR #89（#81）确认 `predict.py` 在官方镜像内跑通（PASS），本地 RTX 5060 下界延迟 28.9ms/图，距 100ms 红线 3.5 倍余量。
+- **官方版本实测**：PR #89（#81）确认 `predict.py` 在 torch/tv 官方版本下跑通；2026-10-21 Python 3.12.10 复测：3 模型 TTA1 全量 5855 张 **304s/338s（52–58ms/图）**，p50 **37.5–45.5ms**、p95 **77.2–80.7ms**（RTX 5060，**非 T4**）。
 - **延迟红线（≤100ms 单图端到端）**：
   - 3 模型 + TTA4 ≈ 155ms ❌ 超标；
   - 2 模型 + TTA4 ≈ 115ms ⚠️ 临界；
-  - **2 模型 + TTA1 ≈ 75ms ✅ 合规（推荐）**。
-  - #97 提及「3 模型 TTA1」配置，其 T4 实测延迟仍属 **待测**（submit_pkg README 标注「待 T4 环境」）。
+  - **2 模型 + TTA1 ≈ 75ms（估算）⚠️ T4 待验证，不能标 ✅ 合规**。
+  - #97 提及「3 模型 TTA1」配置：本地 5060 p95 77–81ms，但 **T4 实测仍属待测**；100ms 红线不能据此认证（见 `docs/ISSUE_81.md`）。
 - **权重合计**：fp16 瘦身成员合计 < 500MB（限制见 `docs/WEIGHTS.md`）。
 
 ### 2.5 已知风险与红线
 
 - **严禁使用外部医学预训练 / 外部标签**：仅用比赛官方数据 + ImageNet-1k/22k 公开初始化。
 - **口径红线**：线上分数口径为「阈值类（平衡准确率@0.5，校准有效）」与「排序类（混合 0.5×(AUROC+AUPRC)，校准无效）」两候选并存（见 `SUBMISSIONS_LOG.md` #1 判定）；提交前务必确认候选落在哪一档、校准是否生效。
-- **延迟红线**：复赛单图端到端 ≤ 100ms；优先 2 模型 + TTA1 合规配置。
+- **延迟红线**：复赛单图端到端 ≤ 100ms；3 模型 TTA1 本地 5060 p95 77–81ms，**T4 待实测**；2 模型配置本机复测不更快，需在 T4 上二选一实测后再定。
 - **配额红线**：每天仅 1 次成功提交，提交前必登记、提交后必回填。
 - **§1/§2 阻塞**：提交包 bundle 物理审计与候选 CSV 复现 md5 校验，待队长提供 `D:\glaucoma_work\submissions\` 与 `D:\glaucoma_work\tmp\gh_issues\` 后完成。
 
