@@ -5,8 +5,13 @@
 ## 训练配置
 
 ```bash
-python train.py --arch swinl_384_e16
+python train.py --arch swin_large --img-size 384 --cache-root cache512 \
+  --epochs 16 --batch-size 4 --accum 12 --lr 7e-5 --head-lr 3.5e-4 \
+  --loader workers --workers 3 --seed 42 --tag swinl_384_e16
 ```
+
+> `swinl_384_e16` 是 run tag，`--arch` 取值是 `swin_large`（`timm:swin_large_patch4_window12_384`）。
+> 云上 HF 直连不通时用 `HF_ENDPOINT=https://hf-mirror.com`。
 
 ## 训练曲线（每 epoch valid AUROC / EMA AUROC / val_loss）
 

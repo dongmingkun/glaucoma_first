@@ -23,6 +23,7 @@
 | [ISSUE_84.md](ISSUE_84.md) | #84 | Base@384 × pos_weight=3：valid 0.98919（<0.990）负结果 |
 | [ISSUE_71.md](ISSUE_71.md) | #71 | ConvNeXt-Large@384 阶段1 负结果 |
 | [ISSUE_74.md](ISSUE_74.md) | #74 | ConvNeXt-Large@384 v2 温和优化负结果 |
+| [ISSUE_95.md](ISSUE_95.md) | #95 | Swin-L@384 16ep 容量上探：valid TTA4 0.98732（<0.990）负结果 |
 
 ### 早期探索 / 其他
 | 文档 | 工单 | 备注 |
