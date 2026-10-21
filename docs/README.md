@@ -9,12 +9,12 @@
 | 文档 | 工单 | 一句话结论 |
 |---|---|---|
 | [ISSUE_76.md](ISSUE_76.md) | #76 | Swin-B@384 16ep 阶段1 达标（valid TTA4 0.99233）；阶段2 train-on-all 验收 PASS（Spearman 0.9066） |
-| [ISSUE_77.md](ISSUE_77.md) / [ISSUE_77_RESULTS.md](ISSUE_77_RESULTS.md) | #77 | ViT-B@384 阶段1(8ep) 结果记录 |
 | [ISSUE_90.md](ISSUE_90.md) | #90 | Swin-B@384 16ep × seed7 复跑（valid TTA4 0.99189 ≥ 0.990，PASS）— 经 PR #99 合并后生效 |
 
 ### 负结果 / 不进集成（多样性 & 目标函数探索）
 | 文档 | 工单 | 一句话结论 |
 |---|---|---|
+| [ISSUE_77.md](ISSUE_77.md) / [ISSUE_77_RESULTS.md](ISSUE_77_RESULTS.md) | #77 | ViT-B@384 8ep：valid TTA4 0.96918（<0.990），集成 w=0；16ep 按早停约定未跑 |
 | [ISSUE_78.md](ISSUE_78.md) | #78 | Base@384 × Focal(γ=2.0)：valid 0.99054，ΔAUROC +0.00001（P=0.596）无增益 |
 | [ISSUE_80.md](ISSUE_80.md) | #80 | Base@384 × RandAugment：valid 0.98953（<0.990），ΔAUROC +0.00001（P=0.602）无增益 |
 | [ISSUE_82.md](ISSUE_82.md) | #82 | Base@384 × Mixup(0.2)：valid 0.98920（<0.990），w=0 零增益 |
