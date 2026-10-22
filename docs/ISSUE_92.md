@@ -1,4 +1,3 @@
-[ISSUE_92.md](https://github.com/user-attachments/files/33818014/ISSUE_92.md)
 # Issue #92 结果记录 — Swin-B@384 16ep seed123（3-Swin 平均成员）
 
 > 对应 https://github.com/dongmingkun/glaucoma_first/issues/92 。本文件记录 seed123 版实测结果。
@@ -41,9 +40,15 @@ ep16 0.98244 0.77771
 
 | 交付 | 结果 |
 |---|---|
-| valid TTA4（EMA 口径） | **AUROC 0.98599 / AUPRC 0.80995**（5849 行） |
-| test 概率 CSV | `swinb_384_e16_s123_test_probs_tta4.csv`，5855 行、无 NaN、概率 ∈[0.000276, 0.999507]，已挂 Release |
+| valid TTA4（EMA 口径） | **AUROC 0.98599 / AUPRC 0.80995**（5849 行，**valid CSV 未交付，数值暂无法复核**） |
+| test 概率 CSV | `swinb_384_e16_s123_test_probs_tta4.csv`，5855 行、无 NaN、概率 ∈[0.000276, 0.999507]，Release [`swinb_e16_s123-1022`](https://github.com/dongmingkun/glaucoma_first/releases/tag/swinb_e16_s123-1022)（已核验行数/顺序/范围） |
 | 权重 | best.pt / last.pt（700MB each），`runs/swin_base_384_1021_194217_swinb_384_e16_s123/` |
+
+## 交付物核验（2026-10-22）
+
+- ✅ test CSV 已交付并核验：5855 行、`Image_name` 顺序与 `test.csv` 一致、无 NaN、范围与文档一致。
+- ❌ **`swinb_384_e16_s123_valid_tta4.csv`（5849 行）缺失**（工单交付项 2）。没有它无法在干净 valid 上计算 3-Swin 平均对 ens9 的增益，而这正是 seed123 的用途。
+- 请把 valid CSV 补挂到同一 Release，并把链接回填到本表；补齐前本单只算「test 概率已交付」。
 
 ## 两个需要队长解读 3-Swin 平均时注意的点
 
