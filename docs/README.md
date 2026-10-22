@@ -24,7 +24,7 @@
 | [ISSUE_71.md](ISSUE_71.md) | #71 | ConvNeXt-Large@384 阶段1 负结果 |
 | [ISSUE_74.md](ISSUE_74.md) | #74 | ConvNeXt-Large@384 v2 温和优化负结果 |
 | [ISSUE_95.md](ISSUE_95.md) | #95 | Swin-L@384 16ep 容量上探：valid TTA4 0.98732（<0.990）负结果 |
-| [ISSUE_92.md](ISSUE_92.md) | #92 | Swin-B seed123：valid TTA4 0.98599（<0.990）；valid CSV 待补，3-Swin 增益待算 |
+| [ISSUE_92.md](ISSUE_92.md) | #92 | Swin-B seed123：valid 0.98599；3-Swin 平均 0.99220，混入 ens9 +0.00029（P=0.84），无显著增益 |
 | [ISSUE_93.md](ISSUE_93.md) | #93 | Swin-B lr7e-5：valid TTA4 0.98535（<0.990）；概率已交付并复核 |
 
 ### 早期探索 / 其他
