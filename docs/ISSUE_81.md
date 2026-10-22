@@ -2,6 +2,7 @@
 
 > 本文件由 GitHub issue #81 原文同步 + 验收结果追加（https://github.com/dongmingkun/glaucoma_first/issues/81），供离线助手读取。
 > **最终状态（2026-10-21）**：本地 Python 3.12 复测 PASS（输出 / 一致性 / 包体）；**T4 的 p50/p95 仍未实测**，100ms 红线不能据此认证。
+> **补遗（2026-10-22，issue #110）**：无 T4 方案落地——新增 `submission_pkg_1model/`（单模型）与 `submission_pkg_2model/`（双模型）两个降级包，默认交付其一；原 3 模型包降为「有 T4 时」候选；新增 `tools/measure_latency.py` 供队长在 5060 上实测安全边际。**T4 栏仍写「未实测」。**
 
 ---
 
@@ -156,3 +157,33 @@ python predict.py --images <test_images_dir> --csv <test.csv> \
 | 5 | 包体 ≤500MB | ✅ PASS（452.48MB，按包内实际文件） |
 
 **最终：PASS（本地） / T4 待验证。** 本工单以「除 T4 实测外全部通过」关闭；若后续拿到 T4，按上面的命令补测并把 p50/p95 回填到本文件与 `submit_pkg/README.md`；若 T4 p95 >100ms，改用 2 模型配置并重新实测（不要用 5060 的 2 模型数字推断）。
+
+---
+
+## 降级交付包（issue #110，2026-10-22）
+
+### 背景
+官方红线 T4 单图 ≤100ms，但无 T4 可认证（租 T4 成本/流程不划算）。决定不租 T4，改用「保守配置 + 安全边际」交付，并明确标注 T4 未实测。
+
+### 交付物
+- `submission_pkg_1model/`：单模型（cnxb_384_all_pseudo），predict.py + fp16 权重 + README + measure_latency.py + assemble.py + MANIFEST.md。5060 p95 目标 ≤40ms（2.5× 余量）。
+- `submission_pkg_2model/`：双模型（cb384 + cnxb_384_all_pseudo，blend 0.65/0.35）。5060 p95 目标 ≤50ms（2× 余量）。
+- `tools/measure_latency.py`：逐批计时，剔除前 2 warmup 批，输出 mean/p50/p95/p99（per-image ms），并给出 5060 上可跑的 `predict.py` 命令。复用 `submit_pkg/predict.py` 的预处理/模型加载，不改推理逻辑。
+- 更新 `submit_pkg/README.md`：默认交付单/双模型，3 模型仅作 T4 候选，**T4 一律写「未实测」**。
+
+### 权重来源与瘦身
+两个降级包复用 Release `weights-1016` 的现有权重：
+- `cb384.pt` ← `convnext_base_384_cache512_1015_auprc0.8644.pt`（已是瘦身单态 fp16，~168MB）。
+- `cnxb_384_all_pseudo.pt` ← `cnxb_384_all_pseudo_fp16.pt`（336MB 双态）→ 本地 torch CPU 瘦身单态（保留 `use=ema`，fp16，~176MB），与 3 模型包内同权重一致。
+- 瘦身仅移除冗余 ema/model 副本，**不改权重内容**；不占云 GPU，纯 CPU 操作。
+
+### 包体校验（预期，实测见各包 MANIFEST.md）
+- 单模型目录：cnxb ≈176MB ≤200MB ✅
+- 双模型目录：cb384 ≈168MB + cnxb ≈176MB ≈344MB ≤400MB ✅
+
+### 安全边际验收（队长在 5060 上执行）
+- 单模型 p95 ≤40ms 或 双模型 p95 ≤50ms → 视为通过安全边际。
+- ⚠️ 5060 p95 受共享 GPU / 70W 功耗墙影响，**不能外推 T4**；T4 100ms 红线须真机认证后才可宣称合规。
+
+### T4 补测（非阻塞）
+若后续拿到免费 T4（Kaggle/Colab/队友），按各包 README 的 `measure_latency.py` 命令 10 分钟补测，回填 p50/p95 到本文件与 `submit_pkg/README.md`；若 T4 p95 >100ms，改用单模型配置。
