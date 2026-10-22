@@ -1,0 +1,54 @@
+{
+  "seed": 42,
+  "n_folds": 5,
+  "n_total": 57245,
+  "n_pos_total": 1848,
+  "folds": [
+    {
+      "fold": 0,
+      "train_rows": 45795,
+      "train_pos": 1478,
+      "train_pos_ratio": 0.032274,
+      "valid_rows": 11450,
+      "valid_pos": 370,
+      "valid_pos_ratio": 0.032314
+    },
+    {
+      "fold": 1,
+      "train_rows": 45795,
+      "train_pos": 1478,
+      "train_pos_ratio": 0.032274,
+      "valid_rows": 11450,
+      "valid_pos": 370,
+      "valid_pos_ratio": 0.032314
+    },
+    {
+      "fold": 2,
+      "train_rows": 45796,
+      "train_pos": 1478,
+      "train_pos_ratio": 0.032274,
+      "valid_rows": 11449,
+      "valid_pos": 370,
+      "valid_pos_ratio": 0.032317
+    },
+    {
+      "fold": 3,
+      "train_rows": 45797,
+      "train_pos": 1479,
+      "train_pos_ratio": 0.032295,
+      "valid_rows": 11448,
+      "valid_pos": 369,
+      "valid_pos_ratio": 0.032233
+    },
+    {
+      "fold": 4,
+      "train_rows": 45797,
+      "train_pos": 1479,
+      "train_pos_ratio": 0.032295,
+      "valid_rows": 11448,
+      "valid_pos": 369,
+      "valid_pos_ratio": 0.032233
+    }
+  ],
+  "verified": true
+}
