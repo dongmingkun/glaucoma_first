@@ -38,15 +38,15 @@ ep16 0.98293 0.78083   ← 收官仍小幅上探
 
 | 交付 | 结果 |
 |---|---|
-| valid TTA4（EMA 口径） | **AUROC 0.98535 / AUPRC 0.80305**（5849 行，**CSV 未交付，数值暂无法复核**） |
-| test 概率 CSV | `swinb_384_e16_lr7e5_test_probs_tta4.csv`，5855 行、无 NaN，**⚠️ 未找到对应 Release/资产，交付未完成** |
+| valid TTA4（EMA 口径） | **AUROC 0.98535 / AUPRC 0.80305**（5849 行，已核验） |
+| test 概率 CSV | `swinb_384_e16_lr7e5_test_probs_tta4.csv`，5855 行、无 NaN，Release [`swinb_384_e16_1r7e5_outputs`](https://github.com/dongmingkun/glaucoma_first/releases/tag/swinb_384_e16_1r7e5_outputs)（实际 tag 里是数字 `1`，原计划名 `swinb_e16_lr7e5-1022`） |
 | 权重 | best.pt（ep16，按本模型 auroc 选）+ last.pt，`runs/swin_base_384_1022_090749_swinb_384_e16_lr7e5/` |
 
 ## 交付物核验（2026-10-22）
 
-- ❌ **valid TTA4 CSV（5849 行）和 test CSV（5855 行）均未交付**；GitHub Releases 中不存在 `swinb_384_e16_lr7e5*` 资产（只有 `weights-1016`、`swinb_e16_s123-1022`、`vitb_384-1021` 三个 Release）。
-- 因此 0.98535 / 0.80305 及「lr 7e-5 打平」的结论目前只有作者本机日志支撑，无法在队长侧复核。
-- 请补 valid + test CSV（挂 Release）并回填链接；若 run 产物已丢失，请把本行改成「未交付/不可复核」，不要保留“已挂 Release”。
+- ✅ valid CSV：5849 行、`Image_name` 顺序与 `valid.csv` 一致、无 NaN；复算 AUROC **0.98535** / AUPRC **0.80305**，与文档一致。
+- ✅ test CSV：5855 行、顺序与 `test.csv` 一致、无 NaN，mean 0.03688。
+- ✅ 「lr 7e-5 与 lr 1e-4 打平、未达 0.990」的结论现在可由队长侧独立复核。
 
 ## 工单核心答案：lr 7e-5 峰值更高，但终值打平
 
