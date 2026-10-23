@@ -44,8 +44,42 @@ python make_folds.py --data-dir ../glaucoma_first --out-dir . --seed 42 --n-fold
 | 3 | 45797 | 1479 | 11448 | 369 |
 | 4 | 45797 | 1479 | 11448 | 369 |
 
+## 训练侧接入（重要：不要用 `--extra-rows`）
+
+`train.py --extra-rows` 要求列名 `Label`，且 `FundusDS` 只在 `cache_root/train` 下找图；本切分的 `fold{k}_train.csv` 列名是 `True_Label`，且混入了 `valid_*.jpg`（原图在 `cache_root/valid`）。直接传 `--extra-rows` 会 KeyError / FileNotFoundError。
+
+正确做法是 **每折一个 csv-root + 一个合并 image cache**，不需要改 `train.py`：
+
+```bash
+# 1) 每折 csv-root：train.csv/valid.csv 直接复制 fold CSV
+for k in 0 1 2 3 4; do
+  mkdir -p folds/fold${k}_csvroot
+  cp folds/fold${k}_train.csv folds/fold${k}_csvroot/train.csv
+  cp folds/fold${k}_valid.csv folds/fold${k}_csvroot/valid.csv
+done
+
+# 2) 合并 image cache（Linux 符号链接，不占磁盘）：
+#    cache_all/train 和 cache_all/valid 都放 train+valid 的全部 57245 张
+mkdir -p cache_all/train cache_all/valid
+cp -rs /path/to/cache512/train/. cache_all/train/
+cp -rs /path/to/cache512/valid/. cache_all/train/
+cp -rs /path/to/cache512/train/. cache_all/valid/
+cp -rs /path/to/cache512/valid/. cache_all/valid/
+
+# 3) 训练第 k 折（从 ImageNet 初始化，16ep）
+python train.py --arch convnext_base --img-size 384 --cache-root cache_all \
+  --csv-root folds/fold${k}_csvroot --epochs 16 --batch-size 8 --accum 6 \
+  --lr 1e-4 --head-lr 5e-4 --loader workers --workers 3 --seed 42 --tag cnxb_fold${k}
+```
+
+- `FundusDS` 用 `cache_all/train`、`cache_all/valid` 下的图；行由 csv-root 的 `train.csv`/`valid.csv` 决定，所以两张表可以混排原始 train/valid。
+- 评估时用 `predict_split(..., split="valid", ...)` 读 `fold{k}_csvroot/valid.csv`。
+- **OOF 一律用 `last.pt`（固定 16ep 的最终 EMA），不要用 `best.pt`**：`train.py` 默认按 held-out valid AUROC 选 best，等于在 OOF 折上做模型选择，会高估 OOF。要么固定 16ep 用 `last.pt`，要么在训练折内部再切一个小验证集做 early stop。
+- **不要用 `--init-from` 指向 valid-selected 的 best.pt**，否则 OOF 被污染。
+- 不要用 `--extra-rows`。如果坚持用它，需要把列名改成 `Label` 并给 `FundusDS` 加跨 split 的路径回退，属于代码改动，不在本目录范围。
+
 ## 后续（训练侧，不在本目录）
 
 - 每折从 ImageNet 初始化训 ConvNeXt-Base@384/cache512，16ep，lr 1e-4，head-lr 5e-4；
-- 用 `--extra-rows` 把本折 4/5 的 valid 并入训练，held-out 1/5 单独 `predict_split` 评估；
+- held-out 1/5 单独 `predict_split` 评估（用 `last.pt`）；
 - 汇总 OOF（57245 行，按原始 train+valid 顺序）、5 折 Spearman、fold 集成增益、test 概率（5855 行）。
