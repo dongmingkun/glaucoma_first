@@ -12,21 +12,29 @@
 ## 复现命令
 ### 一键（推荐）
 ```bash
-# 在云端实例、仓库根目录、CUDA 可见时：
-BS=4 ACCUM=12 CACHE=cache768 LOG=run117.log bash tools/pipeline_117.sh
+# 在云端实例、干净的仓库 clone、仓库根目录、CUDA 可见时：
+# 16ep 是长任务，必须 nohup/setsid，避免 SSH 断开被 SIGHUP 杀掉。
+nohup env BS=4 ACCUM=12 CACHE=cache768 WORKERS=8 LOG=run117.log \
+  bash tools/pipeline_117.sh > run117.out 2>&1 &
+tail -f run117.log
 # 24GB 卡更快：BS=8 ACCUM=6；16GB 卡：BS=2 ACCUM=24（等效 batch 48）
+# CACHE 可指向任意含 train/valid/test 的 768px 缓存；test 在别的目录时加 TEST_CACHE=...
 ```
-脚本自动完成：git pull → 校验 cache768 → 训练 16ep（ImageNet 初始化）→ valid/test TTA4（best 与 last 两口径）→ 行数/NaN 校验（5849/5855）。
+脚本自动完成：git pull → 校验 cache768 → 训练 16ep（ImageNet 初始化）→ valid/test TTA4（best 与 last 两口径）→ 行数/顺序/NaN 校验（5849/5855）。缓存目录缺失、train/valid 计数不是 51396/5849、已有旧 checkpoint、或任一推理/校验失败都会**立即非零退出**，不会打印 DONE。
 
 ### 单步（与 #117 正文一致）
 **训练**（`--arch convnext_base --img-size 512 --cache-root cache768`）：
 ```bash
 python train.py --arch convnext_base --img-size 512 --cache-root cache768 \
   --epochs 16 --batch-size 4 --accum 12 --lr 1e-4 --head-lr 5e-4 \
-  --loader workers --workers 3 --seed 42 --tag cnxb_512_e16
+  --pretrained 1 --loader workers --workers 3 \
+  --seed 42 --tag cnxb_512_e16
 ```
-- 从 ImageNet 初始化（**禁止**用 valid-selected ckpt 热启动）；valid 保持干净（不要 train-on-all）；
-- 24GB 卡可用 bs8×accum6；16GB 卡用 bs2×accum24；等效 batch 48。
+- 从 ImageNet 初始化（`--pretrained 1`，**禁止**用 valid-selected ckpt 热启动）；valid 保持干净（不要 train-on-all）；
+- 24GB 卡可用 bs8×accum6；16GB 卡用 bs2×accum24；等效 batch 48；
+- best.pt 按 train.py 默认的 blend（0.5×(AUROC+AUPRC)）选；同时报 last/EMA，避免只报一个口径；
+- 云端 CPU 核多时可用 `WORKERS=8`（一键）或 `--workers 8`（单步）加速，不改变数据/超参；
+- `cache768` 是 768px 源图缓存，训练/推理时 resize 到 512。
 
 **valid / test TTA4 概率**（复用已合并的 `tools/oof_predict.py`，避免 infer.py 只能读全局 CSV 的限制）：
 ```bash
@@ -38,8 +46,9 @@ python tools/oof_predict.py --ckpt runs/cnxb_512_e16/best.pt \
 python tools/oof_predict.py --ckpt runs/cnxb_512_e16/best.pt \
   --csv glaucoma_first/test.csv --cache-root cache768 --split-dir test \
   --img-size 512 --tta 4 --out oof/cnxb_512_e16_test_best_tta4.csv
-# last/EMA 口径：把 best.pt 换成 last.pt 再跑一遍
+# last/EMA 口径：--ckpt last.pt --use ema 再跑一遍（best 用默认 auto）
 ```
+- `best` 口径用 `--use auto`（train.py 选中的 best 权重）；`last` 口径**固定 `--use ema`**，对应 #117 的 “last/EMA”；
 
 ## 报告（真机侧，回填 `docs/ISSUE_117_RESULTS.md`）
 - 每 epoch valid AUROC / EMA AUROC / AUPRC；
@@ -50,7 +59,7 @@ python tools/oof_predict.py --ckpt runs/cnxb_512_e16/best.pt \
 
 ## 验收（真机指标，不在本预交付范围）
 - 从 ImageNet 初始化（禁止 valid-selected 热启动）；
-- valid/test CSV 行数 5849/5855、顺序一致、无 NaN；
+- valid/test CSV 行数 5849/5855、**Image_name 顺序与官方 CSV 完全一致**、概率在 [0,1]、无 NaN/inf；
 - 报告 TTA4 与配对 bootstrap；
 - 不占用队长本地 5060；云端 24GB+。
 
