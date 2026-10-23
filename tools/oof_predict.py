@@ -30,7 +30,7 @@ import torchvision
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from train import FundusNet, age_tensor
 
 
@@ -48,6 +48,7 @@ class OOFDS(Dataset):
 
     def __getitem__(self, i):
         stem, age = self.rows[i]
+        stem = stem.rsplit(".", 1)[0]
         img = Image.open(os.path.join(self.img_dir, stem + ".jpg")).convert("RGB")
         img = img.resize((self.img_size, self.img_size), Image.BILINEAR)
         if self.flip & 1:
