@@ -499,8 +499,8 @@ def main():
     os.makedirs(exp, exist_ok=True)
     print(f"exp dir: {exp}")
 
-    train_rows = load_rows("train")
-    val_rows = load_rows("valid")
+    train_rows = load_rows("train", csv_root=args.csv_root)
+    val_rows = load_rows("valid", csv_root=args.csv_root)
     n_train_only = len(train_rows)
     if args.train_on_all:
         all_rows = train_rows + val_rows
