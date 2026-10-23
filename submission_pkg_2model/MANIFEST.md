@@ -2,18 +2,16 @@
 
 ## 权重（来源 Release `weights-1016`，本地 torch CPU 瘦身；不改权重内容）
 
-| 文件 | arch | img_size | cache_size | use | 预期大小 | 参考 md5(8) |
+| 文件 | arch | img_size | cache_size | use | 实际大小 | md5(8) |
 |---|---|---|---|---|---|---|
 | `cb384.pt` | convnext_base | 384 | 512 | model | 176.3 MB | `b7aabbdd` |
 | `cnxb_384_all_pseudo.pt` | convnext_base | 384 | 512 | ema | 176.3 MB | `96c91286` |
 
-- **预期包体（仅权重）：352.6 MB ≤ 400 MB ✅**（验收口径：双模型目录 ≤400 MB）
-- 实际 md5 / 瘦身由 `assemble.py` 拉取 Release
-  `convnext_base_384_cache512_1015_auprc0.8644.pt`（cb384，已瘦身单态）与
-  `cnxb_384_all_pseudo_fp16.pt`（336 MB 双态 → 瘦身单态）后生成并回填此处。
-- 与 3 模型包内权重一致：`cb384.pt` use=model、`cnxb_384_all_pseudo.pt` use=ema
-  （见 `docs/ISSUE_81.md` 审计）。blend 0.65/0.35（cb384 占 0.65）。
-- **T4：未实测**（当前无 T4 环境）；5060 p95 ≤50 ms 为安全边际目标，详见 README。
+- **包体（仅权重）：352.6 MB ≤ 400 MB ✅**（验收口径：双模型目录 ≤400 MB）
+- 两个权重与 3 模型包内文件一致（`cb384.pt` use=model、`cnxb_384_all_pseudo.pt` use=ema）；
+  `assemble.py` 可从 Release `weights-1016` 重新拉取，结果一致。
+- **5060 p95：待测**（测量时 GPU 被训练任务占用；同配置单模型 p95 为 53.27 ms，2 模型预计更高）。
+- **T4：未实测**（当前无 T4 环境）；100 ms 红线不能据此认证，详见 README。
 
 ## 文件清单
 
