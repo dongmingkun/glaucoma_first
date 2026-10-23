@@ -2,16 +2,17 @@
 
 ## 权重（来源 Release `weights-1016`，本地 torch CPU 瘦身；不改权重内容）
 
-| 文件 | arch | img_size | cache_size | use | 预期大小 | 参考 md5(8) |
+| 文件 | arch | img_size | cache_size | use | 实际大小 | md5(8) |
 |---|---|---|---|---|---|---|
 | `cnxb_384_all_pseudo.pt` | convnext_base | 384 | 512 | ema | 176.3 MB | `96c91286` |
 
-- **预期包体（仅权重）：176.3 MB ≤ 200 MB ✅**（验收口径：单模型目录 ≤200 MB）
-- 实际 md5 / 瘦身由 `assemble.py` 拉取 Release `cnxb_384_all_pseudo_fp16.pt`（336 MB 双态）
-  → 本地 torch CPU 瘦身单态后生成并回填此处。瘦身仅移除冗余 ema/model 副本，
-  保留的 `use=ema` 态不变。
-- 与 3 模型包内 `cnxb_384_all_pseudo.pt` 同权重（use=ema，见 `docs/ISSUE_81.md` 审计）。
-- **T4：未实测**（当前无 T4 环境）；5060 p95 ≤40 ms 为安全边际目标，详见 README。
+- **包体（仅权重）：176.3 MB ≤ 200 MB ✅**（验收口径：单模型目录 ≤200 MB）
+- 本包权重与 `submit_pkg/cnxb_384_all_pseudo.pt` 同文件（md5 `96c91286`，use=ema）；
+  `assemble.py` 可从 Release `weights-1016` 重新拉取并瘦身，结果一致。
+- **5060 实测（2026-10-23，全量 5855 张，bs32，prep-workers 8）**：
+  mean **32.65 ms** / p50 **29.18 ms** / **p95 53.27 ms** / p99 75.58 ms。
+  目标 p95 ≤40 ms **未达到**；相对 100 ms 红线约 **1.9×** 余量。
+- **T4：未实测**（当前无 T4 环境）；100 ms 红线不能据此认证，详见 README。
 
 ## 文件清单
 
