@@ -1,0 +1,36 @@
+{
+  "seed": 42,
+  "n_folds": 3,
+  "n_total": 57245,
+  "n_pos_total": 1848,
+  "folds": [
+    {
+      "fold": 0,
+      "train_rows": 38163,
+      "train_pos": 1232,
+      "train_pos_ratio": 0.032283,
+      "valid_rows": 19082,
+      "valid_pos": 616,
+      "valid_pos_ratio": 0.032282
+    },
+    {
+      "fold": 1,
+      "train_rows": 38163,
+      "train_pos": 1232,
+      "train_pos_ratio": 0.032283,
+      "valid_rows": 19082,
+      "valid_pos": 616,
+      "valid_pos_ratio": 0.032282
+    },
+    {
+      "fold": 2,
+      "train_rows": 38164,
+      "train_pos": 1232,
+      "train_pos_ratio": 0.032282,
+      "valid_rows": 19081,
+      "valid_pos": 616,
+      "valid_pos_ratio": 0.032283
+    }
+  ],
+  "verified": true
+}
