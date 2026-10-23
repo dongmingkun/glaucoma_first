@@ -12,7 +12,7 @@
 
 ## 前置依赖
 1. **先跑 #109**（`tools/pipeline_109.sh`）产出 3 个 fold `last.pt`；
-2. `cache_all`（train/valid 各 57245，符号链接）、`cache768`（512px 学生用）、`cache512`（test）；
+2. `cache_all`（512 缓存，train/valid 各 57245，供 fold 教师软标签）、**`cache_all768`**（768 缓存，train/valid 各 57245，供 Small@512 学生 2B/test）、`cache768`、`cache512`；
 3. 软标签尺度 / fold-OOF 教师 / 2A/2B 验收拆分等逻辑已在 `gen_soft_labels.py` / `distill.py`（PR #115）。
 
 ## 复现命令
@@ -44,18 +44,19 @@ python tools/distill.py --arch convnext_small --img-size 512 --cache-root cache7
 
 **Step 2B — 最终学生**（train+valid，不用于验收）：
 ```bash
-python tools/distill.py --arch convnext_small --img-size 512 --cache-root cache_all \
+python tools/distill.py --arch convnext_small --img-size 512 --cache-root cache_all768 \
     --cache-size 768 --epochs 10 --soft-labels soft_fold_oof.csv \
     --kd-alpha 0.5 --kd-temp 2.0 --lr 1e-4 --head-lr 5e-4 --pos-weight 5.0 \
     --train-on-all --out-dir runs/distill_cnxs512_final
 ```
-- `cache_all` 的 `train/` 要有全部 57245 张；`--cache-size 768` 写进 checkpoint；
+- **`cache_all768`** 从 `cache768` 用四行 `cp -rs` 合成（train/valid 各 57245，train+valid 全部图）；**不要用 512 的 `cache_all` 配 `--cache-size 768`**，否则训练缓存与打包预处理不一致；
+- `--cache-size 768` 写进 checkpoint；`predict.py` 会按 768 预处理；
 - train+valid 后 valid 不独立，不能做验收；最终学生按 2A 的配方/epoch 直接产出。
 
 **Step 3 — test 概率 + fp16 瘦身**（pipeline 已含）：
 ```bash
 python tools/oof_predict.py --ckpt runs/distill_cnxs512_final/best.pt \
-  --csv glaucoma_first/test.csv --cache-root cache_all --split-dir test \
+  --csv glaucoma_first/test.csv --cache-root cache_all768 --split-dir test \
   --img-size 512 --tta 4 --out oof/distill_cnxs512_test_tta4.csv
 python tools/slim_weights.py --in runs/distill_cnxs512_final/best.pt --out runs/distill_cnxs512_final/student_fp16.pt --use auto
 ```
