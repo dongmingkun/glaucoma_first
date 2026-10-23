@@ -8,7 +8,7 @@ set -u
 cd "$(dirname "$0")/.."   # 仓库根
 PY="${PYTHON:-python}"
 LOG="${LOG:-run109.log}"
-CACHE_SRC="${CACHE_SRC:-cache512}"   # 384 图像缓存（jpg），train/valid 各 57245
+CACHE_SRC="${CACHE_SRC:-cache512}"   # 原始 cache512（train 51396 / valid 5849）；cache_all 由四行 cp -rs 合成 57245
 FOLDS=folds3                         # PR #119 已合并的分层 3 折（方案 A 复用 folds3）
 exec > >(tee -a "$LOG") 2>&1
 echo "===== #109 pipeline start $(date) ====="
@@ -35,7 +35,9 @@ cp -rs "$CACHE_SRC/valid/." cache_all/train/
 cp -rs "$CACHE_SRC/train/." cache_all/valid/
 cp -rs "$CACHE_SRC/valid/." cache_all/valid/
 [ -d "$CACHE_SRC/test" ] && cp -rs "$CACHE_SRC/test/." cache_all/test/
-echo "cache_all 就绪：train=$(ls cache_all/train | wc -l) valid=$(ls cache_all/valid | wc -l)"
+T=$(ls cache_all/train | wc -l); V=$(ls cache_all/valid | wc -l)
+echo "cache_all 就绪：train=$T valid=$V"
+[ "$T" -eq 57245 ] && [ "$V" -eq 57245 ] || { echo "ERROR: cache_all 计数 $T/$V != 57245"; exit 1; }
 
 echo "=== [3] 3 折训练（ConvNeXt-Small@384 16ep，ImageNet 初始化）==="
 # 24GB 卡：bs8×accum6；16GB 卡亦可 bs8×accum6（#109 正文）。每折 ImageNet 初始化，勿用 --init-from 指向 valid-selected ckpt。
@@ -46,13 +48,14 @@ for k in 0 1 2; do
     --csv-root "$FOLDS/fold${k}_csvroot" --epochs 16 --batch-size "$BS" --accum "$ACCUM" \
     --lr 1e-4 --head-lr 5e-4 --loader workers --workers 3 --seed 42 \
     --tag cnxs_fold${k} --out-dir runs/cnxs_fold${k} \
-    && echo "fold $k done" || echo "fold $k FAILED rc=$?"
+    || { echo "fold $k FAILED rc=$?"; exit 1; }
+  echo "fold $k done"
 done
 
 echo "=== [4] OOF（held-out valid）+ test 概率（一律 last.pt）==="
 mkdir -p oof
 for k in 0 1 2; do
-  [ -f "runs/cnxs_fold${k}/last.pt" ] || { echo "fold $k last.pt 缺失，跳过"; continue; }
+  [ -f "runs/cnxs_fold${k}/last.pt" ] || { echo "fold $k last.pt 缺失"; exit 1; }
   $PY tools/oof_predict.py --ckpt "runs/cnxs_fold${k}/last.pt" \
     --csv "$FOLDS/fold${k}_csvroot/valid.csv" --cache-root cache_all --split-dir valid \
     --img-size 384 --tta 4 --out "oof/cnxs_fold${k}_valid_tta4.csv"
@@ -63,7 +66,7 @@ done
 
 echo "=== [5] 组装 OOF（按 train+valid 顺序）+ test 3 折平均 ==="
 $PY - <<'PYEOF'
-import csv, numpy as np, os
+import csv, numpy as np, os, sys
 order=[]
 for fn in ('glaucoma_first/train.csv','glaucoma_first/valid.csv'):
     with open(fn,encoding='utf-8-sig',newline='') as f:
@@ -77,7 +80,10 @@ for k in range(3):
         for r in csv.DictReader(f):
             i=idx[r['Image_name']]; oof[i]=float(r['Probability']); seen.add(i)
 np.save('oof/oof_probs.npy', oof)
-print('OOF cover=%d/%d (期望 57245)'%(len(seen),len(order)))
+cov=len(seen)
+print('OOF cover=%d/%d (期望 57245)'%(cov,len(order)))
+if cov != len(order):
+    print('ERROR: OOF 覆盖不完整，停止'); sys.exit(1)
 trows=[]
 with open('glaucoma_first/test.csv',encoding='utf-8-sig',newline='') as f:
     trows=[r['Image_name'] for r in csv.DictReader(f)]
@@ -90,6 +96,10 @@ for k in range(3):
         for r in csv.DictReader(f): d[r['Image_name']]=float(r['Probability'])
     tp+=[d[n] for n in trows]; cnt+=1
 tp/=max(cnt,1)
+if cnt != 3:
+    print('ERROR: test folds=%d != 3'%cnt); sys.exit(1)
+if len(tp) != 5855:
+    print('ERROR: test rows=%d != 5855'%len(tp)); sys.exit(1)
 with open('oof/test_probs_tta4.csv','w',newline='',encoding='utf-8') as f:
     w=csv.writer(f); w.writerow(['Image_name','Probability','Pred_Label'])
     for n,v in zip(trows,tp): w.writerow([n,'%.6f'%v,1 if v>=0.5 else 0])
