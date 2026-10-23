@@ -10,13 +10,16 @@
 其中 L_hard = BCE(pos_weight) 或 Focal（--focal-gamma>0）；教师软标签经温度 T 软化后与学生对齐。
 
 用法：
-  # 1) 先生成软标签（教师用 train-only 集成，避免污染 valid）
-  python tools/gen_soft_labels.py --teacher runs/a/best.pt --teacher runs/b/best.pt \
-      --teacher-weights 0.6 0.4 --split train valid test --tta 4 --out soft_ens.csv
-  # 2) 蒸馏学生（默认 train+valid 全量，valid 真标签评估挑 best.pt）
-  python tools/distill.py --arch convnext_base --img-size 512 --epochs 10 \
-      --soft-labels soft_ens.csv --kd-alpha 0.5 --kd-temp 2.0 \
-      --lr 1e-4 --head-lr 5e-4 --pos-weight 5.0 --train-on-all
+  # 2A) 配方验收：train-only 学生 + 干净 valid（不加 --train-on-all）
+  python tools/distill.py --arch convnext_base --img-size 512 --cache-root cache768 \
+      --epochs 10 --soft-labels soft_fold_oof.csv --kd-alpha 0.5 --kd-temp 2.0 \
+      --lr 1e-4 --head-lr 5e-4 --pos-weight 5.0 --select-metric auroc \
+      --out-dir runs/distill_base512_eval
+  # 2B) 最终学生：train+valid 全量（需 cache_all），valid 不用于验收
+  python tools/distill.py --arch convnext_base --img-size 512 --cache-root cache_all \
+      --cache-size 768 --epochs 10 --soft-labels soft_fold_oof.csv \
+      --kd-alpha 0.5 --kd-temp 2.0 --lr 1e-4 --head-lr 5e-4 --pos-weight 5.0 \
+      --train-on-all --out-dir runs/distill_base512_final
 """
 import argparse
 import csv
@@ -36,7 +39,7 @@ import torch.nn.functional as F
 
 from train import (FundusNet, FundusDS, ModelEMA, evaluate, age_tensor,
                    ThreadLoader, set_seed, FocalBCEWithLogits)   # noqa: E402
-from paths import load_rows, CACHE_ROOT, CSV_ROOT               # noqa: E402
+from paths import load_rows, CACHE_ROOT               # noqa: E402
 
 
 class KDDS(FundusDS):
@@ -100,15 +103,14 @@ def main():
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--tag", default="")
     ap.add_argument("--cache-root", default=None)
+    ap.add_argument("--cache-size", type=int, default=0,
+                    help="0=从 cache_root 推断（含 768 -> 768，否则 512）；写入 checkpoint 供打包用")
     ap.add_argument("--csv-root", default=None)
     ap.add_argument("--device", default="cuda")
     args = ap.parse_args()
 
-    global CACHE_ROOT, CSV_ROOT
-    if args.cache_root:
-        CACHE_ROOT = args.cache_root
-    if args.csv_root:
-        CSV_ROOT = args.csv_root
+    cache_root = args.cache_root or CACHE_ROOT
+    cache_size = args.cache_size or (768 if "768" in str(cache_root) else 512)
 
     # 读软标签 -> stem -> soft
     soft = {}
@@ -123,13 +125,13 @@ def main():
     torch.backends.cudnn.benchmark = True
 
     ts = datetime.now().strftime("%m%d_%H%M%S")
-    exp = args.out_dir or os.path.join(r"D:\glaucoma_work\runs",
+    exp = args.out_dir or os.path.join(ROOT, "runs",
                                        f"distill_{args.arch}_{args.img_size}_{ts}{('_' + args.tag) if args.tag else ''}")
     os.makedirs(exp, exist_ok=True)
     print(f"exp dir: {exp}")
 
-    train_rows = load_rows("train")
-    val_rows = load_rows("valid")
+    train_rows = load_rows("train", csv_root=args.csv_root)
+    val_rows = load_rows("valid", csv_root=args.csv_root)
     if args.train_on_all:
         base_rows = train_rows + val_rows
     else:
@@ -138,14 +140,22 @@ def main():
     if missing:
         raise SystemExit(f"{len(missing)} 行训练数据缺少软标签（例：{missing[:3]}）；"
                          f"请先用 gen_soft_labels.py 生成覆盖 train+valid 的软标签")
+    if args.train_on_all:
+        missing_imgs = [s for s, a, l in val_rows
+                        if not os.path.exists(os.path.join(cache_root, "train", s + ".jpg"))]
+        if missing_imgs:
+            raise SystemExit(
+                f"--train-on-all 需要合并 cache（cache_all）：{len(missing_imgs)} 张 valid 图不在 "
+                f"{cache_root}/train（例：{missing_imgs[:3]}）。先按 folds/README.md 建 cache_all，"
+                f"并传 --cache-root cache_all。")
     kd_rows = [(s, a, l, soft[s]) for (s, a, l) in base_rows]
     random.Random(args.seed).shuffle(kd_rows)
 
-    ds_tr = KDDS("train", kd_rows, args.img_size, train=True, cache_root=CACHE_ROOT)
+    ds_tr = KDDS("train", kd_rows, args.img_size, train=True, cache_root=cache_root)
     dl_tr = ThreadLoader(ds_tr, args.batch_size, nthreads=3, shuffle=True, drop_last=True)
     dl_va = None
     if not args.train_on_all:
-        ds_va = FundusDS("valid", val_rows, args.img_size, train=False)
+        ds_va = FundusDS("valid", val_rows, args.img_size, train=False, cache_root=cache_root)
         dl_va = ThreadLoader(ds_va, max(32, args.batch_size), nthreads=3, qsize=96,
                              shuffle=False, drop_last=False)
 
@@ -172,7 +182,7 @@ def main():
         {"params": backbone_params, "lr": args.lr},
         {"params": head_params, "lr": args.head_lr},
     ], weight_decay=args.weight_decay)
-    scaler = torch.amp.GradScaler("cuda")
+    scaler = torch.amp.GradScaler("cuda", enabled=(device == "cuda"))
     ema = ModelEMA(model, decay=args.ema_decay)
 
     steps_per_epoch = len(dl_tr) // args.accum
@@ -199,7 +209,7 @@ def main():
             age = age.to(device, non_blocking=True)
             y_soft = y2[:, 0].to(device, non_blocking=True)
             y_hard = y2[:, 1].to(device, non_blocking=True)
-            with torch.amp.autocast("cuda", dtype=torch.float16):
+            with torch.amp.autocast("cuda", dtype=torch.float16, enabled=(device == "cuda")):
                 logits = model(x, age)
                 loss = kd_loss(logits.float(), y_hard, y_soft, args.kd_alpha, args.kd_temp, crit) / args.accum
             scaler.scale(loss).backward()
@@ -220,7 +230,8 @@ def main():
 
         train_loss = run_loss / max(1, nseen)
         ckpt = {"model": model.state_dict(), "ema": ema.ema, "arch": args.arch,
-                "img_size": args.img_size, "epoch": epoch, "use": "ema",
+                "img_size": args.img_size, "cache_size": cache_size,
+                "epoch": epoch, "use": "ema",
                 "args": vars(args), "distill": True}
         ckpt_path = os.path.join(exp, "last.pt")
         torch.save(ckpt, ckpt_path)
@@ -239,11 +250,23 @@ def main():
         with open(log_path, "a", newline="", encoding="utf-8") as f:
             csv.writer(f).writerow([epoch, round(train_loss, 5), round(auroc, 5), round(auprc, 5),
                                     round(auroc_e, 5), round(auprc_e, 5), round(lr_now, 8), round(time.time()-t0, 1)])
-        key = max(0.5 * (auroc + auprc), 0.5 * (auroc_e + auprc_e))
+        def _key(a, p):
+            if args.select_metric == "auroc":
+                return a
+            if args.select_metric == "auprc":
+                return p
+            return 0.5 * (a + p)
+
+        km, ke = _key(auroc, auprc), _key(auroc_e, auprc_e)
+        if ke >= km:
+            key, use = ke, "ema"
+        else:
+            key, use = km, "model"
+        ckpt["use"] = use
         if key > best_key:
             best_key = key
             torch.save(ckpt, os.path.join(exp, "best.pt"))
-            print(f"  new best -> best.pt ({best_key:.4f})", flush=True)
+            print(f"  new best -> best.pt ({best_key:.4f}, use={use})", flush=True)
 
     print(f"done. best key = {best_key:.4f} -> {exp}/best.pt")
 
