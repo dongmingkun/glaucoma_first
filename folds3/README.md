@@ -26,8 +26,8 @@
 ## 复现
 
 ```bash
-# 在仓库根目录执行（自动探测 glaucoma_first/{train,valid}.csv）
-python folds/make_folds.py --n-folds 3 --out-dir folds3 --data-dir glaucoma_first --seed 42
+# 在仓库根目录执行（脚本按 folds/ 目录解析 --out-dir，所以要写 ../folds3）
+python folds/make_folds.py --n-folds 3 --out-dir ../folds3 --data-dir glaucoma_first --seed 42
 ```
 
 ## 校验结论（split_manifest.json，verified=true）
@@ -55,10 +55,10 @@ python folds/make_folds.py --n-folds 3 --out-dir folds3 --data-dir glaucoma_firs
 # 2) 合并 image cache（Linux 符号链接，不占磁盘）：
 #    cache_all/train 和 cache_all/valid 都放 train+valid 的全部 57245 张
 mkdir -p cache_all/train cache_all/valid
-cp -rs /path/to/cache384/train/. cache_all/train/
-cp -rs /path/to/cache384/valid/. cache_all/train/
-cp -rs /path/to/cache384/train/. cache_all/valid/
-cp -rs /path/to/cache384/valid/. cache_all/valid/
+cp -rs /path/to/cache512/train/. cache_all/train/
+cp -rs /path/to/cache512/valid/. cache_all/train/
+cp -rs /path/to/cache512/train/. cache_all/valid/
+cp -rs /path/to/cache512/valid/. cache_all/valid/
 
 # 3) 训练第 k 折（Swin-B@384，从 ImageNet 初始化，16ep）
 python train.py --arch swin_base --img-size 384 --cache-root cache_all \
