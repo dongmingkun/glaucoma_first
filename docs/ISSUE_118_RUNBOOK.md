@@ -33,16 +33,16 @@ python train.py --arch swin_base --img-size 384 --cache-root cache_all \
   --lr 1e-4 --head-lr 5e-4 --loader workers --workers 3 --seed 42 --tag swin_fold0
 ```
 
-### OOF / test（单折，复用 tools/oof_predict.py）
+### OOF / test（单折，复用 tools/oof_predict.py；固定 --use ema）
 ```bash
-# held-out valid（OOF 必须用 last.pt）
+# held-out valid（OOF 必须用 last.pt + 固定 --use ema，禁止 auto/best）
 python tools/oof_predict.py --ckpt runs/swin_fold0/last.pt \
   --csv folds3/fold0_csvroot/valid.csv --cache-root cache_all --split-dir valid \
-  --img-size 384 --tta 4 --out oof/swin_fold0_valid_tta4.csv
-# test
+  --img-size 384 --tta 4 --use ema --out oof/swin_fold0_valid_tta4.csv
+# test（与 OOF 同口径，供 #127 stacking 配对）
 python tools/oof_predict.py --ckpt runs/swin_fold0/last.pt \
   --csv glaucoma_first/test.csv --cache-root cache_all --split-dir test \
-  --img-size 384 --tta 4 --out oof/swin_fold0_test_tta4.csv
+  --img-size 384 --tta 4 --use ema --out oof/swin_fold0_test_tta4.csv
 ```
 
 ## 为什么需要 `tools/oof_predict.py`
@@ -52,7 +52,8 @@ python tools/oof_predict.py --ckpt runs/swin_fold0/last.pt \
 
 ## 验收（真机指标，不在本预交付范围）
 - 3 折 OOF 覆盖全部 57245、无 train/valid 重叠；
-- OOF 用 `last.pt`；test 5855 行、顺序一致、无 NaN；
+- OOF 用 `last.pt` + 固定 `--use ema`（auto/best 按该折 AUROC 选权重 = 选择泄漏）；
+  test 5855 行、顺序一致、无 NaN；
 - 不占用队长本地 5060；云端 24GB+。
 
 ## 交付物清单（真机跑完回填）

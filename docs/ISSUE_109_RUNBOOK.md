@@ -7,7 +7,8 @@
 ## 任务（#109 方案 A）
 - 不跑原 5-fold Base（保留在 `folds/` 作备选），改为 **3-fold ConvNeXt-Small@384 16ep**（`folds3/`，PR #119 已合并）。
 - 目标：拿 1848 正例的 OOF + 3 个数据子集不同的模型；Small 在云端比 Base 快，适合当前时间预算。
-- **OOF 用 `last.pt`**（`best.pt` 按 held-out valid 选，会高估 OOF）；valid/test 都 TTA4；test 用 3 折平均。
+- **OOF 用 `last.pt` + 固定 `--use ema`**（`best.pt` 按 held-out valid 选会高估 OOF；
+  `--use auto` 按该折 AUROC 选 EMA/model 同样是选择泄漏，见 #126 组长评论）；valid/test 都 TTA4；test 用 3 折平均。
 
 ## 关键修复（PR #120，已合并）
 `train.py --csv-root` 原来只改 `train.py` 的全局名，`paths.load_rows()` 仍读默认全量 → fold 会**静默训成全量**。
@@ -33,16 +34,16 @@ done
 ```
 - 每折从 ImageNet 初始化；**不要** `--init-from` 指向 valid-selected ckpt。
 
-### OOF / test（单折，复用已合并的 tools/oof_predict.py）
+### OOF / test（单折，复用已合并的 tools/oof_predict.py；固定 --use ema）
 ```bash
-# held-out valid（OOF 必须用 last.pt）
+# held-out valid（OOF 必须用 last.pt + 固定 --use ema，禁止 auto/best）
 python tools/oof_predict.py --ckpt runs/cnxs_fold0/last.pt \
   --csv folds3/fold0_csvroot/valid.csv --cache-root cache_all --split-dir valid \
-  --img-size 384 --tta 4 --out oof/cnxs_fold0_valid_tta4.csv
-# test
+  --img-size 384 --tta 4 --use ema --out oof/cnxs_fold0_valid_tta4.csv
+# test（与 OOF 同口径，供 #127 stacking 配对）
 python tools/oof_predict.py --ckpt runs/cnxs_fold0/last.pt \
   --csv glaucoma_first/test.csv --cache-root cache_all --split-dir test \
-  --img-size 384 --tta 4 --out oof/cnxs_fold0_test_tta4.csv
+  --img-size 384 --tta 4 --use ema --out oof/cnxs_fold0_test_tta4.csv
 ```
 
 ## 缓存（cache_all 建法，见 folds3/README.md）
@@ -55,7 +56,7 @@ python tools/oof_predict.py --ckpt runs/cnxs_fold0/last.pt \
 
 ## 验收（真机指标，不在本预交付范围）
 - 3 折 valid 并集 = 全部 57245，无 train/valid 重叠；
-- OOF 用 `last.pt`；test 5855 行、顺序一致、无 NaN；
+- OOF 用 `last.pt` + 固定 `--use ema`；test 5855 行、顺序一致、无 NaN；
 - 3 折模型两两 Spearman < 0.98；
 - 与 ens9 的配对 bootstrap（OOF vs ens9 在 valid 子集上的对比）。
 
