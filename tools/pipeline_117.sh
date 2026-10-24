@@ -4,6 +4,9 @@
 #   - 仓库 git pull 到含 PR #120（train.py --csv-root）+ PR #121（tools/oof_predict.py）
 #   - cache768（768px 图像缓存，训练时 resize 到 512；train 51396 / valid 5849 / test 5855）在盘
 # 设计依据：#117 正文 / 队长评论（03:52）。单模，无 fold；不涉及 --csv-root。
+# 复用（新工单）：
+#   #125 云端重跑 #117：TAG=cnxb_512_e16_cloud BS=8 ACCUM=6 WORKERS=8 CACHE=cache768 bash tools/pipeline_117.sh
+#   #128 RandAugment   ：TAG=cnxb_512_e16_ra SEED=7 RA="2 9" BS=8 ACCUM=6 WORKERS=8 bash tools/pipeline_117.sh
 set -u
 set -o pipefail
 cd "$(dirname "$0")/.."   # 仓库根
@@ -14,6 +17,8 @@ TEST_CACHE="${TEST_CACHE:-$CACHE}"  # test 图像缓存（如单独存放可覆�
 TAG="${TAG:-cnxb_512_e16}"
 OUT="runs/${TAG}"
 WORKERS="${WORKERS:-3}"
+SEED="${SEED:-42}"          # #125 用 42；#128（RandAugment）用 7
+RA="${RA:-}"                # 可选 RandAugment，如 RA="2 9"（#128）；空则不加
 exec > >(tee -a "$LOG") 2>&1
 echo "===== #117 pipeline start $(date) ====="
 
@@ -33,10 +38,12 @@ echo "=== [2] 训练 ConvNeXt-Base@512 16ep（ImageNet 初始化，禁止 valid-
 [ ! -e "$OUT/last.pt" ] && [ ! -e "$OUT/best.pt" ] || { echo "ERROR: $OUT 已有 checkpoint；换 TAG 或先归档（脚本不自动覆盖旧 run）"; exit 1; }
 # 24GB 卡：bs8×accum6；16GB 卡：bs2×accum24；正文默认 bs4×accum12（等效 batch 48）
 BS="${BS:-4}"; ACCUM="${ACCUM:-12}"
+# RA 非空时追加 --randaugment N M（#128）；注意这里故意不加引号以按空格分词
+RA_ARG=""; [ -n "$RA" ] && RA_ARG="--randaugment $RA"
 $PY train.py --arch convnext_base --img-size 512 --cache-root "$CACHE" \
   --epochs 16 --batch-size "$BS" --accum "$ACCUM" --lr 1e-4 --head-lr 5e-4 \
-  --pretrained 1 --loader workers --workers "$WORKERS" \
-  --seed 42 --tag "$TAG" --out-dir "$OUT" \
+  --pretrained 1 --loader workers --workers "$WORKERS" $RA_ARG \
+  --seed "$SEED" --tag "$TAG" --out-dir "$OUT" \
   || { echo "训练 FAILED rc=$?"; exit 1; }
 [ -f "$OUT/best.pt" ] || { echo "ERROR: $OUT/best.pt 缺失"; exit 1; }
 echo "训练完成：best.pt / last.pt -> $OUT"
