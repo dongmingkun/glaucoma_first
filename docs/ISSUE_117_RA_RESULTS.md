@@ -50,8 +50,10 @@ python tools/oof_report.py metrics --labels glaucoma_first/valid.csv \
 | best（ep12，blend 选中；推理 use=ema） | **0.99322** | **0.88270** | 0.92531 | 0.96814（@p≥0.1295） | 0.05514 | ✅ |
 | last + 固定 EMA | **0.99284** | 0.88231 | 0.91293 | 0.96667（@p≥0.1028） | 0.05136 | ✅ |
 
-**对照历史：超过 ens9 集成（0.99110）与此前最强单模 Swin-B@384 16ep（0.99233），
-为仓库目前最强单模；AUPRC 0.88270 亦超过 Small@512 参考基线 0.87256。**
+**对照历史：ens9 valid AUROC 0.99260；本模型 best 0.99322（valid-selected，+0.00062）、
+last 固定 EMA 0.99284（+0.00024，噪声内）；两者均高于此前最强单模 Swin-B@384 16ep 0.99233
+（last +0.00051），为仓库目前最强单模；AUPRC 0.88270/0.88231 亦超过 Small@512 参考基线 0.87256。**
+（best 是按 valid 选的，存在选择偏差；干净口径看 last 固定 EMA。）
 
 ## 多样性：与既有成员的 Spearman / 融合
 
@@ -69,29 +71,44 @@ python tools/oof_report.py metrics --labels glaucoma_first/valid.csv \
 **与全部现有成员 Spearman 0.65–0.86，远低于 0.98 门槛——多样性极佳**
 （同架构 Base 成员间通常 >0.95；RA 训练侧增强带来了真正的排序多样性）。
 
-以下三项需 ens9 / Base@512 4ep / Base@384 8ep 的 valid 概率文件（在队长本地/Release，
-云机上没有），**待补**；命令已就绪：
+补充：ens9 / Base@512 4ep / Base@384 8ep 的 valid 概率已从历史成员重建并核对
+（ens9 = 0.591*cb512 + 0.224*hi512_v2 + 0.141*cb384 + 0.044*b512，valid AUROC 0.99260）。
+文件在 `release_assets/20261024_team_valid/`（团队 zip）：
 
 ```bash
 python tools/oof_report.py metrics --labels glaucoma_first/valid.csv \
-  --probs cnxb_512_e16_ra_valid_last_tta4.csv ens9_valid_probs_tta4.csv
+  --probs ens9_valid_tta4_cal.csv base512_4ep_valid_tta4.csv cb384_valid_tta4.csv \
+          cnxb_512_e16_ra_valid_best_tta4.csv cnxb_512_e16_ra_valid_last_tta4.csv
 python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
-  --base ens9_valid_probs_tta4.csv --new cnxb_512_e16_ra_valid_last_tta4.csv
+  --base ens9_valid_tta4_cal.csv --new cnxb_512_e16_ra_valid_last_tta4.csv \
+  --w-max 0.5 --w-step 0.05 --bootstrap 2000
 ```
 
-| 对 | Spearman(valid) |
-|---|---|
-| vs ens9（验收关注 <0.98） | 待补（文件未到手；由成员 0.65–0.86 推断大概率 ≪0.98） |
-| vs Base@512 4ep | 待补 |
-| vs Base@384 8ep | 待补 |
-| blend vs ens9：best w / Δ / P(Δ>0)（prob & logit） | 待补 |
+| 对（括号内为该成员 valid AUROC） | Spearman(best) | Spearman(last/EMA) |
+|---|---|---|
+| vs ens9（0.99260；验收 <0.98） | 0.75975 | **0.69677** |
+| vs Base@512 4ep（0.99089） | 0.71753 | 0.65072 |
+| vs Base@384 8ep（0.99117） | 0.75538 | 0.71776 |
+
+blend vs ens9（valid 5849；w=0..0.5 step 0.05；2000 次配对 bootstrap）：
+
+| 口径 | mode | best w | blend AUROC | ΔAUROC | P(Δ>0) |
+|---|---|---|---|---|---|
+| last（固定 EMA，干净） | prob | 0.50 | 0.99285 | +0.00025 | 0.893 |
+| last（固定 EMA，干净） | logit | 0.50 | 0.99315 | +0.00055 | **0.952** |
+| best（valid-selected，偏乐观） | prob | 0.50 | 0.99303 | +0.00042 | 0.963 |
+| best（valid-selected，偏乐观） | logit | 0.50 | 0.99332 | +0.00071 | **0.983** |
+
+> best w 是在同一批 valid 上选的，bootstrap 为条件推断、偏乐观；best 口径还叠加 best.pt 的
+> valid 选择偏差。上99判定仍以 #127 的 clean OOF/nested CV 为准；本表只说明这个强单模 +
+> 高多样性成员值得进入后续融合评估，不构成“可以上99”的结论。
 
 ## 验收（对照 #128）
 
 - [x] valid TTA4 ≥0.9925：best 0.99322 / last 0.99284，**双口径达标**；
 - [x] test 5855 行、顺序一致、无 NaN（pipeline 第 [4] 步硬校验 OK；
       test mean best 0.05514 / last 0.05136，与 valid 患病率 3.27% 同量级）；
-- [ ] 与 ens9 Spearman <0.98：与现有 5 个成员 0.65–0.86（远优于门槛），ens9 待补文件后确认；
+- [x] 与 ens9 Spearman <0.98：last **0.69677** / best 0.75975，远优于门槛；Base@512/Base@384 见上表；
 - [x] 未占用队长本地 5060（AutoDL 4090）。
 
 ## 交付物
