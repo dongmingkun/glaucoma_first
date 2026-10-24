@@ -4,9 +4,15 @@
 背景
 ----
 现有 ens10（98.82）的权重是在 **valid** 上调的，而 train+all 成员看过 valid，valid 不是干净的选择集。
-本脚本改用 **#109 的 3 折 held-out OOF（57245 行 / 1848 正例）** 做成员组合：
-每个样本的 OOF 概率都由「没见过它」的模型产出，因此可在 OOF 上做 nested 3-fold CV 选权重/正则，
-而不会泄漏到 valid。最终把选定权重/模型应用到成员的 test TTA4 概率，产出 `stack_test_tta4.csv`。
+本脚本改用 **fold-trained 的 held-out OOF（57245 行 / 1848 正例）** 做成员组合：
+每个样本的 OOF 概率必须由「训练时没见过它」的**对应折模型**产出，因此可在 OOF 上做 nested
+3-fold CV 选权重/正则，而不会泄漏到 valid。最终把选定权重/模型应用到成员的 test TTA4 概率，
+产出 `stack_test_tta4.csv`。
+
+**泄漏红线**：全局 train-only 单模（cb384/Base@384 8ep/Base@512 4ep/Swin 单模）不能生成
+57245 OOF——folds3 的 valid 含它们在官方 train 上见过的行（约 2/3 in-sample）。只有每折模型
+（#126 的 3 折 Small，或 #118 的 3 折 Swin）的 held-out OOF 才可进本脚本。fold OOF 还必须
+固定 `--use ema`（或固定 model）；`auto`/`best.pt` 会按该折 AUROC 选权重，属于选择泄漏。
 
 方法（三种，CV 选优）
 ----
@@ -17,28 +23,25 @@
 评估
 ----
 - nested 3-fold CV：外层 held-out 折评估，内层（weight/logreg）只在其余折上拟合/选参；
-- 报告 OOF AUROC/AUPRC、与 ens9 的配对 bootstrap（B 次重采样，P(Δ>0)）；
-- 门槛（#127）：ΔAUROC vs ens9 ≥ +0.0003 且 P(Δ>0) ≥ 0.90 才算有希望；否则如实记录负结果。
+- 报告 OOF AUROC/AUPRC、与干净基线的配对 bootstrap（B 次重采样，P(Δ>0)）；
+- 初筛门槛（#127）：ΔAUROC vs baseline ≥ +0.0003 且 P(Δ>0) ≥ 0.90；
+- **上99门槛**：ΔAUROC ≥ +0.0015 且 P(Δ>0) ≥ 0.95（可用 --target-delta/--target-p 覆盖）；
+  只有 target99 PASS 才建议作为线上提交候选，否则如实记录负结果。
 
 用法
 ----
   # 自测（不需要任何数据文件，验证数学/流程；CPU 秒级）
   python tools/stack_oof.py --self-test
 
-  # 真跑（#126 产出 3 折 OOF 后；成员 OOF/test 由 folds3 生成）
+  # 真跑（#126 产出 3 折 OOF 后；只加 fold-trained 成员）
   python tools/stack_oof.py \
     --labels glaucoma_first/train.csv glaucoma_first/valid.csv \
     --folds folds3 --test-names glaucoma_first/test.csv \
     --base oof/oof_probs.npy::oof/test_probs_tta4.csv \
-    --member cb384=oof/cb384_oof.npy::oof/cb384_test_tta4.csv \
-    --member base384_8ep=oof/base384_8ep_oof.npy::oof/base384_8ep_test_tta4.csv \
-    --member base512_4ep=oof/base512_4ep_oof.npy::oof/base512_4ep_test_tta4.csv \
-    --member swin_s7=oof/swin_s7_oof.npy::oof/swin_s7_test_tta4.csv \
-    --member swin_s123=oof/swin_s123_oof.npy::oof/swin_s123_test_tta4.csv \
-    --ens9 ens9=oof/ens9_oof.npy::oof/ens9_test_tta4.csv \
+    --member swin3=oof/swin3_oof.npy::oof/swin3_test_tta4.csv \
     --out-prefix oof/stack --bootstrap 2000
 
-  # 自动发现成员（oof/*_oof.npy + 同名 *_test_tta4.csv）
+  # 自动发现成员（oof/*_oof.npy + 同名 *_test_tta4.csv；只应放 fold-trained 成员）
   python tools/stack_oof.py --labels ... --folds folds3 --test-names ... --autodiscover
 """
 import argparse
@@ -278,7 +281,10 @@ def read_label_csv(paths):
             for r in csv.DictReader(f):
                 names.append(r["Image_name"])
                 y.append(int(float(r["True_Label"])))
-    return names, np.asarray(y, dtype=np.int8)
+    y = np.asarray(y, dtype=np.int8)
+    if not np.isin(y, (0, 1)).all():
+        raise SystemExit("labels 不是 0/1")
+    return names, y
 
 
 def read_names(path):
@@ -291,7 +297,7 @@ def read_names(path):
 
 def read_prob_csv(path, names=None):
     d = {}
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
         for r in csv.DictReader(f):
             d[r["Image_name"]] = float(r["Probability"])
     if names is None:
@@ -308,8 +314,13 @@ def load_vec(spec, names):
         v = np.load(spec).astype(np.float64).ravel()
         if names is not None and len(v) != len(names):
             raise SystemExit(f"{spec} 长度 {len(v)} != 期望 {len(names)}")
-        return v
-    return read_prob_csv(spec, names)
+    else:
+        v = read_prob_csv(spec, names)
+    if not np.isfinite(v).all():
+        raise SystemExit(f"{spec} 含 NaN/inf")
+    if (v < 0).any() or (v > 1).any():
+        raise SystemExit(f"{spec} 概率越界 [0,1]")
+    return v
 
 
 def parse_member(tok, names, test_names):
@@ -336,8 +347,14 @@ def load_folds(folds_dir, names):
         p = os.path.join(folds_dir, f"fold{k}_valid.csv")
         if not os.path.exists(p):
             break
+        seen_fold = set()
         for n in read_names(p):
+            if n in seen_fold:
+                raise SystemExit(f"{p} 内重复 Image_name: {n}")
+            seen_fold.add(n)
             if n in idx:
+                if fold[idx[n]] != -1:
+                    raise SystemExit(f"Image_name 同时出现在多个 fold: {n}")
                 fold[idx[n]] = k
         k += 1
     if k == 0:
@@ -423,14 +440,18 @@ def main():
     ap.add_argument("--labels", nargs="+", default=None, help="train.csv valid.csv（官方顺序）")
     ap.add_argument("--folds", default="folds3", help="含 fold{k}_valid.csv 的目录")
     ap.add_argument("--test-names", default="glaucoma_first/test.csv", help="test 名称顺序")
-    ap.add_argument("--base", default=None, help="#126 基础：OOF.npy:test.csv")
-    ap.add_argument("--member", action="append", default=[], help="NAME=OOF::TEST（可重复）")
-    ap.add_argument("--ens9", default=None, help="基线 NAME=OOF::TEST（配对 bootstrap 用）")
-    ap.add_argument("--autodiscover", action="store_true", help="自动发现 oof/*_oof.npy")
+    ap.add_argument("--base", default=None, help="#126 基础：OOF.npy::test.csv（必须 fold-trained）")
+    ap.add_argument("--member", action="append", default=[], help="NAME=OOF::TEST（必须 fold-trained；禁止全局单模 OOF）")
+    ap.add_argument("--ens9", default=None, help="基线 NAME=OOF::TEST；OOF 必须是干净 fold-trained，全局 ens9 的 folds3 OOF 会泄漏")
+    ap.add_argument("--autodiscover", action="store_true", help="自动发现 oof/*_oof.npy（只应放 fold-trained 成员）")
     ap.add_argument("--out-prefix", default="oof/stack")
     ap.add_argument("--methods", default="rank,weight,logreg")
     ap.add_argument("--bootstrap", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument("--target-delta", type=float, default=0.0015,
+                    help="上99门槛的最小 ΔAUROC（默认 +0.0015）")
+    ap.add_argument("--target-p", type=float, default=0.95,
+                    help="上99门槛的最小 P(Δ>0)（默认 0.95）")
     ap.add_argument("--report", default=None, help="可选：写 docs/ENSEMBLE_OOF_RESULTS.md")
     args = ap.parse_args()
 
@@ -509,17 +530,24 @@ def main():
     print(f"写出 {args.out_prefix}_oof_probs.npy ({len(cv_preds[best_m])})")
 
     boot = None
+    screen_pass = False
+    target_pass = False
     if ens9_vec is not None:
         boot = paired_bootstrap(y, cv_preds[best_m], ens9_vec, B=args.bootstrap, seed=args.seed)
-        gate = "PASS" if (boot["delta"] >= 0.0003 and boot["p_gt0"] >= 0.90) else "FAIL(负结果)"
-        print(f"vs ens9: ΔAUROC={boot['delta']:+.5f} P(Δ>0)={boot['p_gt0']:.3f} "
-              f"CI95=[{boot['ci95'][0]:+.5f},{boot['ci95'][1]:+.5f}] -> 门槛 {gate}")
+        screen_pass = bool(boot["delta"] >= 0.0003 and boot["p_gt0"] >= 0.90)
+        target_pass = bool(boot["delta"] >= args.target_delta and boot["p_gt0"] >= args.target_p)
+        print(f"vs baseline: ΔAUROC={boot['delta']:+.5f} P(Δ>0)={boot['p_gt0']:.3f} "
+              f"CI95=[{boot['ci95'][0]:+.5f},{boot['ci95'][1]:+.5f}]")
+        print(f"  初筛 (Δ≥+0.0003/P≥0.90): {'PASS' if screen_pass else 'FAIL'}")
+        print(f"  上99  (Δ≥+{args.target_delta:.4f}/P≥{args.target_p:.2f}): {'PASS' if target_pass else 'FAIL'}")
 
     payload = {
         "members": params, "selected": best_m, "cv_results": cv_results,
-        "fit_params": fit_params, "bootstrap_vs_ens9": boot,
-        "gate": ("pass" if boot and boot["delta"] >= 0.0003 and boot["p_gt0"] >= 0.90
-                 else "fail" if boot else "n/a"),
+        "fit_params": fit_params, "bootstrap_vs_baseline": boot,
+        "screen": {"delta_min": 0.0003, "p_min": 0.90, "pass": screen_pass},
+        "target99": {"delta_min": args.target_delta, "p_min": args.target_p, "pass": target_pass},
+        "gate": ("target99_pass" if target_pass else "screen_only" if screen_pass else
+                 "fail" if boot else "n/a"),
         "n": int(len(y)), "pos": int(y.sum()),
     }
     with open(args.out_prefix + "_weights.json", "w", encoding="utf-8") as f:
@@ -537,10 +565,11 @@ def main():
         for m, r in cv_results.items():
             lines.append(f"| {m} | {r['auroc']:.5f} | {r['auprc']:.5f} |")
         if boot:
-            lines += ["", "## 与 ens9 的配对 bootstrap", "",
+            lines += ["", "## 与干净基线的配对 bootstrap", "",
                       f"- ΔAUROC = {boot['delta']:+.5f}，P(Δ>0) = {boot['p_gt0']:.3f}",
                       f"- 95% CI = [{boot['ci95'][0]:+.5f}, {boot['ci95'][1]:+.5f}]，B = {boot['B']}",
-                      f"- 门槛（Δ≥+0.0003 且 P≥0.90）：**{payload['gate'].upper()}**"]
+                      f"- 初筛（Δ≥+0.0003 且 P≥0.90）：**{'PASS' if screen_pass else 'FAIL'}**",
+                      f"- 上99（Δ≥+{args.target_delta:.4f} 且 P≥{args.target_p:.2f}）：**{'PASS' if target_pass else 'FAIL'}**"]
         lines += ["", "## 权重/参数", "", "```json",
                   json.dumps(fit_params[best_m], ensure_ascii=False, indent=2), "```"]
         with open(args.report, "w", encoding="utf-8") as f:
