@@ -22,8 +22,8 @@ ISSUE_117_RA_RESULTS.md），也用于 #127 前的成员初筛。只依赖 numpy
   python tools/oof_report.py metrics \
       --labels glaucoma_first/train.csv glaucoma_first/valid.csv --probs oof/oof_probs.npy
 
-  # 3 折两两 Spearman（#126 验收 <0.98；用 test 概率）
-  python tools/oof_report.py metrics --labels glaucoma_first/test.csv \
+  # 3 折两两 Spearman（#126 验收 <0.98；用 test 概率；test.csv 无 True_Label）
+  python tools/oof_report.py metrics --names-only --labels glaucoma_first/test.csv \
       --probs oof/cnxs_fold0_test_tta4.csv oof/cnxs_fold1_test_tta4.csv oof/cnxs_fold2_test_tta4.csv
 
   # 新成员 vs 基线（如 ens9）：blend w 扫描 + 配对 bootstrap（#125/#128/#126）
@@ -40,19 +40,27 @@ import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 
-def read_labels(paths):
-    """读一个或多个标签 CSV，返回 (names, y)；名字重复即报错。"""
+def read_labels(paths, names_only=False):
+    """读标签 CSV，返回 (names, y)；names_only=True 时 y=None（test.csv 无标签）。"""
     names, y = [], []
     for path in paths:
         with open(path, encoding="utf-8-sig", newline="") as f:
             for r in csv.DictReader(f):
-                if "Image_name" not in r or "True_Label" not in r:
-                    sys.exit(f"ERROR: {path} 缺 Image_name/True_Label 列")
+                if "Image_name" not in r:
+                    sys.exit(f"ERROR: {path} 缺 Image_name 列")
+                if not names_only and "True_Label" not in r:
+                    sys.exit(f"ERROR: {path} 缺 True_Label 列（test 用 --names-only）")
                 names.append(r["Image_name"])
-                y.append(int(r["True_Label"]))
+                if not names_only:
+                    y.append(int(float(r["True_Label"])))
     if len(set(names)) != len(names):
         sys.exit("ERROR: 标签 CSV 里 Image_name 有重复")
-    return names, np.asarray(y, dtype=np.int64)
+    if names_only:
+        return names, None
+    y = np.asarray(y, dtype=np.int64)
+    if not np.isin(y, (0, 1)).all():
+        sys.exit("ERROR: True_Label 不是 0/1")
+    return names, y
 
 
 def read_probs(path, names):
@@ -116,12 +124,20 @@ def blend_at(base, new, w, mode="prob"):
 
 
 def cmd_metrics(args):
-    names, y = read_labels(args.labels)
+    names, y = read_labels(args.labels, names_only=args.names_only)
     probs = {os.path.basename(p): read_probs(p, names) for p in args.probs}
-    print(f"n={len(y)} pos={int(y.sum())} ({y.mean():.4%})")
+    if y is None:
+        print(f"n={len(names)} (names-only; AUROC/AUPRC skipped)")
+    else:
+        print(f"n={len(y)} pos={int(y.sum())} ({y.mean():.4%})")
     for tag, p in probs.items():
-        a, ap = auc_ap(y, p)
-        print(f"  {tag:44s} AUROC={a:.5f} AUPRC={ap:.5f}")
+        if y is not None:
+            a, ap = auc_ap(y, p)
+            print(f"  {tag:44s} AUROC={a:.5f} AUPRC={ap:.5f} "
+                  f"mean={p.mean():.5f} std={p.std():.5f} min={p.min():.5f} max={p.max():.5f}")
+        else:
+            print(f"  {tag:44s} mean={p.mean():.5f} std={p.std():.5f} "
+                  f"min={p.min():.5f} max={p.max():.5f}")
     tags = list(probs)
     for i in range(len(tags)):
         for j in range(i + 1, len(tags)):
@@ -160,6 +176,8 @@ def cmd_blend(args):
         p_gt = float((deltas > 0).mean())
         print(f"  [{mode}] paired bootstrap({args.bootstrap}) Δ 95%CI=[{lo:+.5f},{hi:+.5f}] "
               f"P(Δ>0)={p_gt:.3f}")
+    print("  NOTE: best w 是在同一批 labels 上选的，bootstrap 是条件推断、偏乐观；"
+          "#127 决策请用 nested CV 或预指定 w。")
 
 
 def self_test():
@@ -222,7 +240,21 @@ def self_test():
             raise AssertionError("应当因名字不匹配退出")
         except SystemExit:
             pass
-    print("self-test PASS: 标签/对齐/npy顺序/AUROC/AUPRC/Spearman(tie)/blend/bootstrap/错误路径")
+        # names-only：test.csv 没有 True_Label，只对齐/算 Spearman
+        names_csv = os.path.join(td, "test_names.csv")
+        with open(names_csv, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["Image_name", "Age"])
+            for nm in names:
+                w.writerow([nm, 55])
+        ns2, y2 = read_labels([names_csv], names_only=True)
+        assert ns2 == names and y2 is None
+        try:
+            read_labels([names_csv])
+            raise AssertionError("无 True_Label 且未 names_only 应退出")
+        except SystemExit:
+            pass
+    print("self-test PASS: 标签/对齐/npy顺序/AUROC/AUPRC/Spearman(tie)/blend/bootstrap/names-only/错误路径")
 
 
 def main():
@@ -231,6 +263,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd")
     m = sub.add_parser("metrics", help="AUROC/AUPRC + 两两 Spearman")
     m.add_argument("--labels", nargs="+", required=True, help="标签 CSV（Image_name,True_Label）")
+    m.add_argument("--names-only", action="store_true",
+                   help="只对齐 Image_name/算 Spearman（test.csv 无 True_Label）")
     m.add_argument("--probs", nargs="+", required=True,
                    help="概率 .csv（按名对齐）或 .npy（按 labels 顺序）")
     m.set_defaults(func=cmd_metrics)

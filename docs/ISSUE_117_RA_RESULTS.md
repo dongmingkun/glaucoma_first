@@ -57,6 +57,8 @@ python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
 | vs #125 cnxb_512_e16_cloud | 待填 |
 | blend vs ens9：best w / Δ / P(Δ>0)（prob & logit） | 待填 |
 
+> best w 是在同批 valid 上选的，bootstrap P 偏乐观；#127 决策用 nested CV 或预指定 w。
+
 ## 验收（对照 #128）
 
 - [ ] valid TTA4 ≥0.9925；

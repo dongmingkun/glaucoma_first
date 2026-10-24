@@ -46,7 +46,7 @@ test 3 折平均：`oof/test_probs_tta4.csv`，5855 行，test_mean = 待填。
 ## 3 折两两 Spearman（验收 <0.98）
 
 ```bash
-python tools/oof_report.py metrics --labels glaucoma_first/test.csv \
+python tools/oof_report.py metrics --names-only --labels glaucoma_first/test.csv \
   --probs oof/cnxs_fold0_test_tta4.csv oof/cnxs_fold1_test_tta4.csv oof/cnxs_fold2_test_tta4.csv
 ```
 
@@ -85,6 +85,8 @@ python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
 | ens9 AUROC / AUPRC | 待填 |
 | Spearman(OOF, ens9) | 待填 |
 | blend best w / Δ / P(Δ>0) | 待填 |
+
+> best w 是在同批 valid 上选的，bootstrap P 偏乐观；#127 决策用 nested CV 或预指定 w。
 
 ## 验收（对照 #126）
 

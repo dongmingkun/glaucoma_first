@@ -28,7 +28,7 @@
 ```bash
 python tools/oof_report.py metrics --labels glaucoma_first/valid.csv \
   --probs oof/cnxb_512_e16_cloud_valid_best_tta4.csv oof/cnxb_512_e16_cloud_valid_last_tta4.csv
-python tools/oof_report.py metrics --labels glaucoma_first/test.csv \
+python tools/oof_report.py metrics --names-only --labels glaucoma_first/test.csv \
   --probs oof/cnxb_512_e16_cloud_test_best_tta4.csv oof/cnxb_512_e16_cloud_test_last_tta4.csv
 ```
 （test 无官方标签，只看 mean/分布；上表主要回填 valid 两行。）
@@ -56,6 +56,8 @@ python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
 | vs Base@384 8ep | 待填 |
 | vs ens9 | 待填 |
 | blend vs ens9：best w / Δ / P(Δ>0)（prob & logit） | 待填 |
+
+> best w 是在同批 valid 上选的，bootstrap P 偏乐观；#127 决策用 nested CV 或预指定 w。
 
 ## 验收（对照 #125）
 
