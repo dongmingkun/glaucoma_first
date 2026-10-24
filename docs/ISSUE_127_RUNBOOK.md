@@ -30,8 +30,8 @@ python tools/stack_oof.py --self-test
 - **#118（可选）**：把 3 折 Swin 的 OOF/test 按同样格式接进来；
 - **禁止**用 `cb384`/`Base@384 8ep`/`Base@512 4ep`/`Swin 16ep` 单模生成 57245 OOF（原因见上方红线）；
 - **固定权重口径**：OOF 必须用 `last.pt` + `--use ema`（或固定 model）。#126/#118 的 pipeline
-  当前默认 `--use auto`，会用该折 AUROC 选 EMA/model；若已用 auto 生成 OOF，需用固定 EMA
-  重新生成（TTA4 约 1h），否则本工具的 OOF 指标不可信。
+  （`tools/pipeline_109.sh` / `tools/pipeline_118.sh`）已固定 `--use ema`；若历史 OOF 是在修复前
+  用默认 `auto` 生成的，需用固定 EMA 重新生成（TTA4 约 1h），否则本工具的 OOF 指标不可信。
 
 ### 2) 跑 stacking（CPU，2–4h）
 ```bash

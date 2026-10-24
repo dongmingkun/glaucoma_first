@@ -3,7 +3,8 @@
 # 依赖（Phase A 校验）：
 #   - 仓库 git pull 到含 PR #119（folds3/）+ PR #120（train.py --csv-root 修复）+ PR #121（tools/oof_predict.py）
 #   - cache512（384 图像缓存，train+valid 各 57245 张、test 5855 张）在盘
-# 设计依据：#109 正文「方案 A」/ 队长评论（03:58 / 04:00）。OOF 用 last.pt（不要 best.pt）。
+# 设计依据：#109 正文「方案 A」/ 队长评论（03:58 / 04:00）。OOF 用 last.pt + 固定 --use ema
+# （best.pt / --use auto 都按该折 valid AUROC 选权重 = 选择泄漏，见 #126 组长评论与 #127 泄漏红线）。
 set -u
 cd "$(dirname "$0")/.."   # 仓库根
 PY="${PYTHON:-python}"
@@ -52,16 +53,17 @@ for k in 0 1 2; do
   echo "fold $k done"
 done
 
-echo "=== [4] OOF（held-out valid）+ test 概率（一律 last.pt）==="
+echo "=== [4] OOF（held-out valid）+ test 概率（一律 last.pt + 固定 --use ema）==="
 mkdir -p oof
 for k in 0 1 2; do
   [ -f "runs/cnxs_fold${k}/last.pt" ] || { echo "fold $k last.pt 缺失"; exit 1; }
+  # 固定 --use ema：auto 会按该折 valid AUROC 选 EMA/model = 选择泄漏（#126 组长评论）
   $PY tools/oof_predict.py --ckpt "runs/cnxs_fold${k}/last.pt" \
     --csv "$FOLDS/fold${k}_csvroot/valid.csv" --cache-root cache_all --split-dir valid \
-    --img-size 384 --tta 4 --out "oof/cnxs_fold${k}_valid_tta4.csv"
+    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_valid_tta4.csv"
   $PY tools/oof_predict.py --ckpt "runs/cnxs_fold${k}/last.pt" \
     --csv glaucoma_first/test.csv --cache-root cache_all --split-dir test \
-    --img-size 384 --tta 4 --out "oof/cnxs_fold${k}_test_tta4.csv"
+    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_test_tta4.csv"
 done
 
 echo "=== [5] 组装 OOF（按 train+valid 顺序）+ test 3 折平均 ==="
