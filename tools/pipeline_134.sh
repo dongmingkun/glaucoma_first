@@ -31,6 +31,8 @@ echo "cache768 就绪：train=$T0 valid=$V0 test=$S0（期望 51396/5849/5855）
 
 echo "=== [1.5] 建 folds3/fold{k}_csvroot ==="
 for k in 0 1 2; do
+  [ -f "$FOLDS/fold${k}_train.csv" ] && [ -f "$FOLDS/fold${k}_valid.csv" ] \
+    || { echo "ERROR: $FOLDS/fold${k}_{train,valid}.csv 缺失"; exit 1; }
   mkdir -p "$FOLDS/fold${k}_csvroot"
   cp "$FOLDS/fold${k}_train.csv" "$FOLDS/fold${k}_csvroot/train.csv"
   cp "$FOLDS/fold${k}_valid.csv" "$FOLDS/fold${k}_csvroot/valid.csv"
@@ -56,7 +58,7 @@ for k in 0 1 2; do
   # RA 故意不加引号以按空格分词（与 pipeline_117.sh 一致）
   $PY train.py --arch convnext_base --img-size 512 --cache-root cache_all768 \
     --csv-root "$FOLDS/fold${k}_csvroot" --epochs 16 --batch-size "$BS" --accum "$ACCUM" \
-    --lr 1e-4 --head-lr 5e-4 --randaugment $RA --seed "$SEED" \
+    --lr 1e-4 --head-lr 5e-4 --pretrained 1 --randaugment $RA --seed "$SEED" \
     --loader workers --workers "$WORKERS" \
     --tag ra_fold${k} --out-dir runs/ra_fold${k} \
     || { echo "ra_fold $k FAILED rc=$?"; exit 1; }
@@ -94,8 +96,18 @@ for k in range(3):
             i=idx[r['Image_name']]; oof[i]=float(r['Probability']); seen.add(i)
 if len(seen) != len(order):
     print('ERROR: OOF 覆盖 %d/%d 不完整，停止'%(len(seen),len(order))); sys.exit(1)
+if not np.isfinite(oof).all() or oof.min() < 0 or oof.max() > 1:
+    print('ERROR: OOF 概率含 NaN/inf 或越界'); sys.exit(1)
 np.save('oof/ra_oof.npy', oof)
 print('OOF cover=%d/%d saved oof/ra_oof.npy'%(len(seen),len(order)))
+# official valid 5849 子集（OOF 的 train+valid 顺序，valid 在后）
+with open('glaucoma_first/valid.csv',encoding='utf-8-sig',newline='') as f:
+    vrows=[r['Image_name'] for r in csv.DictReader(f)]
+vp=oof[-len(vrows):]
+with open('oof/ra_oof_valid_subset_tta4.csv','w',newline='',encoding='utf-8') as f:
+    w=csv.writer(f); w.writerow(['Image_name','Probability','Pred_Label'])
+    for n,v in zip(vrows,vp): w.writerow([n,'%.6f'%v,1 if v>=0.5 else 0])
+print('valid subset rows=%d saved oof/ra_oof_valid_subset_tta4.csv'%len(vrows))
 trows=[]
 with open('glaucoma_first/test.csv',encoding='utf-8-sig',newline='') as f:
     trows=[r['Image_name'] for r in csv.DictReader(f)]
@@ -109,8 +121,11 @@ for k in range(3):
     tp+=[d[n] for n in trows]; cnt+=1
 if cnt != 3:
     print('ERROR: test folds=%d != 3'%cnt); sys.exit(1)
+tp /= cnt
 if len(tp) != 5855:
     print('ERROR: test rows=%d != 5855'%len(tp)); sys.exit(1)
+if not np.isfinite(tp).all() or tp.min() < 0 or tp.max() > 1:
+    print('ERROR: test 平均概率含 NaN/inf 或越界'); sys.exit(1)
 with open('oof/ra_test_tta4.csv','w',newline='',encoding='utf-8') as f:
     w=csv.writer(f); w.writerow(['Image_name','Probability','Pred_Label'])
     for n,v in zip(trows,tp): w.writerow([n,'%.6f'%v,1 if v>=0.5 else 0])
@@ -123,5 +138,5 @@ echo "=== [6] 报告提示（真机侧回填 docs/ISSUE_RA_3FOLD_RESULTS.md）==
 echo "  每折/OOF 指标：oof_report.py metrics --labels folds3/fold{k}_valid.csv --probs oof/ra_fold{k}_valid_tta4.csv"
 echo "  OOF 57245：oof_report.py metrics --labels glaucoma_first/train.csv glaucoma_first/valid.csv --probs oof/ra_oof.npy"
 echo "  折间 Spearman：oof_report.py metrics --names-only --labels glaucoma_first/test.csv --probs oof/ra_fold{0,1,2}_test_tta4.csv"
-echo "产物：runs/ra_fold{0,1,2}/last.pt + oof/ra_fold{k}_{valid,test}_tta4.csv + oof/ra_oof.npy + oof/ra_test_tta4.csv"
+echo "产物：runs/ra_fold{0,1,2}/last.pt + oof/ra_fold{k}_{valid,test}_tta4.csv + oof/ra_oof.npy + oof/ra_oof_valid_subset_tta4.csv + oof/ra_test_tta4.csv"
 echo "===== #134 pipeline DONE $(date) ====="

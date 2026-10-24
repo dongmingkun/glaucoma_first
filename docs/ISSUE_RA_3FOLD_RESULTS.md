@@ -58,7 +58,7 @@ python tools/oof_report.py metrics --names-only --labels glaucoma_first/test.csv
 
 ## vs ens9（official valid 5849 子集）blend + 配对 bootstrap
 
-OOF 的 valid 段（官方顺序后 5849 行）切出后对 ens9（0.99260）做 blend：
+OOF 的 valid 段（官方顺序后 5849 行；pipeline 已生成 `oof/ra_oof_valid_subset_tta4.csv`）对 ens9（0.99260）做 blend：
 
 ```bash
 python - <<'EOF'
