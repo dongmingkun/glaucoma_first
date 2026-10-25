@@ -37,8 +37,8 @@
 | 概率范围 | [0.000013, 0.999693]，mean 0.04032，全部有限值 |
 
 OOF 的 official valid 5849 子集：AUROC 0.98958 / AUPRC 0.84969
-（vs ens9 0.99110——OOF 是「模型没见过的图」上的诚实估计，直接对比单模 valid 略低是预期行为；
-blend/bootstrap 需 ens9 valid 概率文件，**待补**，命令已就绪）。
+（vs ens9 **0.99260**，差 0.0030；OOF 是「模型没见过的图」上的诚实估计，但这组 Small fold
+本身弱于 ens9，不能指望单独加入 ens9 提分；blend 已实测，见下）。
 
 test 3 折平均：`oof/test_probs_tta4.csv`（本 PR 交付名 `cnxs3_test_probs_tta4.csv`），
 5855 行，test_mean 0.04671。
@@ -53,15 +53,23 @@ test 3 折平均：`oof/test_probs_tta4.csv`（本 PR 交付名 `cnxs3_test_prob
 
 三折均为 ImageNet 初始化 + 不同数据子集，相关度远低于 0.98 门槛——异构性良好，适合 stacking。
 
-## 与 ens9 的配对 bootstrap
+## 与 ens9 的配对 bootstrap（valid 5849）
 
-需 ens9 valid 概率文件（队长本地/Release），**待补**：
+ens9 valid 概率已从历史成员重建并核对（0.99260）；OOF valid 子集 0.98958，Spearman **0.76749**。
 
 ```bash
 python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
-  --base ens9_valid_probs_tta4.csv --new oof/oof_valid_subset_tta4.csv
+  --base ens9_valid_tta4_cal.csv --new oof_valid_subset_tta4.csv \
+  --w-max 0.5 --w-step 0.05 --bootstrap 2000
 ```
-（`oof_valid_subset_tta4.csv` 的切出命令见模板历史；OOF npy 按官方 train+valid 顺序，valid 为后 5849 行。）
+
+| mode | best w | ΔAUROC | P(Δ>0) |
+|---|---|---|---|
+| prob | 0.00 | +0.00000 | 0.000 |
+| logit | 0.00 | +0.00000 | 0.000 |
+
+**结论：#126 的 3 折 Small base 单独不能给 ens9 带来任何 AUROC 增益（最佳 w=0）。**
+#127 clean stack 必须依赖 #134 RA fold 等更强成员；不要把本 base 当作提分候选。
 
 ## 验收（对照 #126）
 
