@@ -32,6 +32,7 @@ from torch.utils.data import Dataset, DataLoader
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from train import FundusNet, age_tensor
+from paths import AGE_MEDIAN
 
 
 class OOFDS(Dataset):
@@ -75,10 +76,19 @@ def predict(model, loader, device):
 
 
 def load_csv(path):
+    """读 Image_name,Age（可含 True_Label）。Age 清洗必须与训练侧 paths.load_rows 完全
+    同口径：空/非法值或 <1 / >110 用 AGE_MEDIAN 兜底，最后钳制到 [10,100]——
+    官方 train.csv 有 10 行空 Age（folds3 fold valid 继承），裸 float() 会崩（#126 事故）。"""
     rows = []
     with open(path, "r", encoding="utf-8-sig", newline="") as f:
         for r in csv.DictReader(f):
-            rows.append((r["Image_name"], float(r["Age"])))
+            try:
+                age = float(r["Age"])
+            except (ValueError, TypeError):
+                age = AGE_MEDIAN
+            if age < 1 or age > 110:
+                age = AGE_MEDIAN
+            rows.append((r["Image_name"], min(max(age, 10.0), 100.0)))
     return rows
 
 
