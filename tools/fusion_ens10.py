@@ -18,6 +18,7 @@ import numpy as np
 
 ENS10_DEFAULT = "submission_20251018_ens10_cal.csv"
 NEW_DEFAULT = "oof/cnxb_512_e16_ra_all_test_tta4.csv"
+TEST_ORDER = "glaucoma_first/test.csv"
 WEIGHTS = (0.1, 0.2, 0.3)
 
 
@@ -25,17 +26,36 @@ def read_probs(path):
     d = {}
     with open(path, encoding="utf-8-sig", newline="") as f:
         for r in csv.DictReader(f):
+            n = r["Image_name"]
+            if n in d:
+                sys.exit(f"ERROR: {path} Image_name 重复: {n}")
             p = float(r["Probability"])
             if not (0.0 <= p <= 1.0) or p != p:
                 sys.exit(f"ERROR: {path} 概率越界/NaN")
-            d[r["Image_name"]] = p
+            d[n] = p
     return d
 
 
+def read_names(path):
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        return [r["Image_name"] for r in csv.DictReader(f)]
+
+
 def spearman(a, b):
-    ra = np.argsort(np.argsort(a)).astype(float)
-    rb = np.argsort(np.argsort(b)).astype(float)
-    return float(np.corrcoef(ra, rb)[0, 1])
+    def rank(x):
+        x = np.asarray(x, dtype=float)
+        order = np.argsort(x, kind="mergesort")
+        sx = x[order]
+        r = np.empty(len(x), dtype=float)
+        i = 0
+        while i < len(x):
+            j = i
+            while j + 1 < len(x) and sx[j + 1] == sx[i]:
+                j += 1
+            r[order[i:j + 1]] = (i + j) / 2.0
+            i = j + 1
+        return r
+    return float(np.corrcoef(rank(a), rank(b))[0, 1])
 
 
 def topk_overlap(a, b, k=200):
@@ -51,7 +71,12 @@ def run(ens10_path, new_path, out_dir):
         sys.exit(f"ERROR: 名字集合不一致（ens10={len(ens10)} new={len(new)}）")
     if len(ens10) != 5855:
         sys.exit(f"ERROR: 行数 {len(ens10)} != 5855")
-    names = sorted(ens10)
+    names = list(ens10)   # preserve ens10 input order (official 5855) by default
+    if os.path.exists(TEST_ORDER):
+        order = read_names(TEST_ORDER)
+        if set(order) != set(ens10):
+            sys.exit(f"ERROR: 与官方 {TEST_ORDER} 名字集合不一致")
+        names = order       # always write candidates in official test.csv order
     pe = np.asarray([ens10[n] for n in names])
     pn = np.asarray([new[n] for n in names])
 

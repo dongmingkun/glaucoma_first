@@ -50,17 +50,21 @@ test 3 折平均：`oof/ra_test_tta4.csv`（本 PR 交付名 `ra3_test_probs_tta
 ## 与 cnxs3 OOF 的互补性（#127 成员间关键指标）
 
 **Spearman(RA OOF, cnxs OOF) = 0.66772（57245 全量）**——两大家族（同为 ConvNeXt 但
-分辨率/增强/数据子集不同）排序相关仅 0.67，是 stack 里互补性最强的组合之一；
-叠加 #139 Swin（架构级异构）后，三成员 clean stack 值得期待。
+分辨率/增强/数据子集不同）排序相关仅 0.67，是 stack 里互补性最强的组合之一。
 
-## vs ens9 blend + 配对 bootstrap
+但必须看绝对值：**2 成员 clean stack（cnxs3+RA，logreg）nested CV OOF = 0.98929**
+（vs cnxs3 base 0.98685，Δ+0.00244 / P=1.0），仍 **低于 ens9 0.99260**；
+所以它不是 99/提分候选。叠加 #139 Swin 后需要显著提升才可能接近 ens9，不能提前宣布。
 
-ens9 valid 概率文件（团队 zip）仍缺，**待补**；`oof/ra_oof_valid_subset_tta4.csv`
-（OOF 的 official valid 5849 段，pipeline 已产出，AUROC 0.98886 / AUPRC 0.86410）已就位：
+## vs ens9（official valid 5849）
+
+RA OOF valid 子集 0.98886 / AUPRC 0.86410；ens9 0.99260；Spearman 0.71882。
+blend prob/logit **最佳 w=0，Δ0/P0** → RA fold 单独不能给 ens9 增加 AUROC。
 
 ```bash
 python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
-  --base ens9_valid_probs_tta4.csv --new oof/ra_oof_valid_subset_tta4.csv
+  --base ens9_valid_tta4_cal.csv --new oof/ra_oof_valid_subset_tta4.csv \
+  --w-max 0.5 --w-step 0.05 --bootstrap 2000
 ```
 
 ## 验收（对照 #134）
@@ -68,7 +72,8 @@ python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
 - [x] OOF 覆盖 57245、3 折 valid 无重叠；OOF/test 均 fixed EMA；
 - [x] test 5855 行、顺序一致、无 NaN（pipeline 硬校验）；
 - [x] 3 折两两 Spearman <0.98（0.73–0.77）；
-- [x] 不直接宣布 99——留给 #127 nested CV gate（Δ≥+0.0015/P≥0.95；提分 Δ≥+0.0005/P≥0.90）。
+- [x] 不直接宣布 99：2 成员 stack 0.98929 仍 < ens9 0.99260；等 #139 Swin 三成员 stack 再判，
+      且 target99 必须以 ens9/绝对 OOF 为准，不能把“vs weak base3 PASS”当成 99。
 
 ## 交付物
 
@@ -81,5 +86,8 @@ python tools/oof_report.py blend --labels glaucoma_first/valid.csv \
 
 ## 下游
 
-- **#127**：ra3 OOF 即刻可用；等 #139 swin3 OOF（明天）后三成员 nested CV 一次跑完；
+- **#127**：RA OOF 已可用于 2 成员 stack；实测 logreg CV-OOF **0.98929**（vs cnxs3 base +0.00244/P=1.0），
+  但绝对值 < ens9 0.99260；等 #139 swin3 OOF 后跑三成员 nested CV，若仍 < ens9 则明确判负；
+- **#138**：train+all RA_all 是 test-only 家族候选（无干净 valid），与 #127 OOF 无关；
+  它的价值只能由一次线上提交回答，不能混入 clean OOF 结论。
 - **#138**：train+all 版 RA 成员已在跑（复用本单建好的 cache_all768）。
