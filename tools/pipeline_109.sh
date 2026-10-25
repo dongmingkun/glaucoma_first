@@ -58,12 +58,15 @@ mkdir -p oof
 for k in 0 1 2; do
   [ -f "runs/cnxs_fold${k}/last.pt" ] || { echo "fold $k last.pt 缺失"; exit 1; }
   # 固定 --use ema：auto 会按该折 valid AUROC 选 EMA/model = 选择泄漏（#126 组长评论）
+  # 预测失败即停（#126 真机事故：Age 空值崩溃曾被静默跳过，零填 OOF 还以 rc=0 收场）
   $PY tools/oof_predict.py --ckpt "runs/cnxs_fold${k}/last.pt" \
     --csv "$FOLDS/fold${k}_csvroot/valid.csv" --cache-root cache_all --split-dir valid \
-    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_valid_tta4.csv"
+    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_valid_tta4.csv" \
+    || { echo "fold $k valid 预测 FAILED rc=$?"; exit 1; }
   $PY tools/oof_predict.py --ckpt "runs/cnxs_fold${k}/last.pt" \
     --csv glaucoma_first/test.csv --cache-root cache_all --split-dir test \
-    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_test_tta4.csv"
+    --img-size 384 --tta 4 --use ema --out "oof/cnxs_fold${k}_test_tta4.csv" \
+    || { echo "fold $k test 预测 FAILED rc=$?"; exit 1; }
 done
 
 echo "=== [5] 组装 OOF（按 train+valid 顺序）+ test 3 折平均 ==="
@@ -81,11 +84,11 @@ for k in range(3):
     with open(p,encoding='utf-8',newline='') as f:
         for r in csv.DictReader(f):
             i=idx[r['Image_name']]; oof[i]=float(r['Probability']); seen.add(i)
-np.save('oof/oof_probs.npy', oof)
 cov=len(seen)
 print('OOF cover=%d/%d (期望 57245)'%(cov,len(order)))
 if cov != len(order):
-    print('ERROR: OOF 覆盖不完整，停止'); sys.exit(1)
+    print('ERROR: OOF 覆盖不完整，不落盘任何产物'); sys.exit(1)
+np.save('oof/oof_probs.npy', oof)   # 校验通过后才落盘（杜绝零填 npy）
 trows=[]
 with open('glaucoma_first/test.csv',encoding='utf-8-sig',newline='') as f:
     trows=[r['Image_name'] for r in csv.DictReader(f)]
@@ -107,4 +110,6 @@ with open('oof/test_probs_tta4.csv','w',newline='',encoding='utf-8') as f:
     for n,v in zip(trows,tp): w.writerow([n,'%.6f'%v,1 if v>=0.5 else 0])
 print('test rows',len(tp),'test_mean',round(float(tp.mean()),5))
 PYEOF
+rc=$?
+[ "$rc" -eq 0 ] || { echo "ERROR: 组装失败 rc=$rc（OOF/test 不完整，拒绝 DONE）"; exit 1; }
 echo "===== #109 pipeline DONE $(date) ====="
