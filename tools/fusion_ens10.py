@@ -58,6 +58,11 @@ def spearman(a, b):
     return float(np.corrcoef(rank(a), rank(b))[0, 1])
 
 
+def logit(p):
+    p = np.clip(np.asarray(p, dtype=float), 1e-6, 1 - 1e-6)
+    return np.log(p / (1.0 - p))
+
+
 def topk_overlap(a, b, k=200):
     ta = set(np.argsort(-a)[:k].tolist())
     tb = set(np.argsort(-b)[:k].tolist())
@@ -89,8 +94,8 @@ def run(ens10_path, new_path, out_dir):
     if s < 0.80:
         print("WARN: 相关性 <0.80（#138 判负参考线：漂移型成员，谨慎使用）")
 
-    le = np.log(np.clip(pe, 1e-6, 1 - 1e-6))
-    ln = np.log(np.clip(pn, 1e-6, 1 - 1e-6))
+    le = logit(pe)
+    ln = logit(pn)
     os.makedirs(out_dir, exist_ok=True)
     stem = os.path.splitext(os.path.basename(new_path))[0]
     for mode, (a, b) in (("rank", (pe, pn)), ("logit", (le, ln))):
