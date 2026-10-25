@@ -38,7 +38,7 @@ SPEARMAN_MIN = 0.90
 MEAN_REL_TOL = 0.25
 
 
-def predict_test(ckpt_path, tta, workers, batch_size):
+def predict_test(ckpt_path, tta, workers, batch_size, cache_root=None):
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     arch = ckpt.get("arch", "efficientnet_b3")
     img_size = ckpt.get("img_size", 384)
@@ -52,7 +52,7 @@ def predict_test(ckpt_path, tta, workers, batch_size):
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[tta]
     total = np.zeros(len(rows), dtype=np.float64)
     for fl in flips:
-        ds = InferDS("test", rows, img_size, flip=fl)
+        ds = InferDS("test", rows, img_size, flip=fl, cache_root=cache_root)
         dl = DataLoader(ds, batch_size=batch_size, shuffle=False, num_workers=workers,
                         pin_memory=True, persistent_workers=workers > 0, prefetch_factor=4)
         total += predict(model, dl, "cuda")
@@ -85,9 +85,12 @@ def main():
     ap.add_argument("--workers", type=int, default=3)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--topk", type=int, default=200, help="head-overlap size (AUPRC-relevant)")
+    ap.add_argument("--cache-root", default=None,
+                    help="test 图像缓存根目录（默认 CACHE_ROOT 常量，云端需显式传）")
     args = ap.parse_args()
 
-    p, ckpt, use, img_size = predict_test(args.ckpt, args.tta, args.workers, args.batch_size)
+    p, ckpt, use, img_size = predict_test(args.ckpt, args.tta, args.workers, args.batch_size,
+                                          args.cache_root)
     print(f"ckpt={args.ckpt} arch={ckpt.get('arch')} img={img_size} use={use} "
           f"train_on_all={bool(ckpt.get('train_on_all'))} epoch={ckpt.get('epoch')}")
     if not ckpt.get("train_on_all"):
@@ -106,7 +109,8 @@ def main():
               "Pass a train-only best.pt for the real agreement test.")
         return 0
 
-    r, rck, ruse, rimg = predict_test(args.ref, args.tta, args.workers, args.batch_size)
+    r, rck, ruse, rimg = predict_test(args.ref, args.tta, args.workers, args.batch_size,
+                                      args.cache_root)
     print(f"ref ={args.ref} arch={rck.get('arch')} img={rimg} use={ruse} "
           f"train_on_all={bool(rck.get('train_on_all'))}")
     if rck.get("train_on_all"):
