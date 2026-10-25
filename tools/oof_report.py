@@ -116,10 +116,15 @@ def auc_ap(y, p):
     return float(roc_auc_score(y, p)), float(average_precision_score(y, p))
 
 
+def logit(p):
+    p = np.clip(np.asarray(p, dtype=float), 1e-6, 1 - 1e-6)
+    return np.log(p / (1.0 - p))
+
+
 def blend_at(base, new, w, mode="prob"):
     if mode == "prob":
         return (1 - w) * base + w * new
-    lo_b, lo_n = np.log(np.clip(base, 1e-6, 1)), np.log(np.clip(new, 1e-6, 1))
+    lo_b, lo_n = logit(base), logit(new)
     return 1.0 / (1.0 + np.exp(-(lo_b + w * (lo_n - lo_b))))
 
 
