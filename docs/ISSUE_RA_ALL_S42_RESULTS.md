@@ -13,6 +13,7 @@
 | check_train_on_all | ⚠️ 只做了**分布自检**（本实例无 `#128` 的 train-only `runs/cnxb_512_e16_ra/last.pt`，无 ref 即无正式 PASS/REVIEW 判定） |
 | 融合候选 | ✅ 11 个（seed 平均 + ens10 w=0.10/0.15/0.20；seed42 直接融 ens10 logit/rank w=0.1/0.2/0.3） |
 | 权重 | ✅ Release `ra_all_s42`：`cnxb_512_e16_ra_all_s42_last.pt`（705,015,055 B） |
+| 追加实验（soup） | ✅ seed7+seed42 权重平均（0.5/0.5）已跑通，2 分钟出 `soup` 单成员 + 6 个融合候选（见第八节） |
 | 线上验证 | ⏳ **待提交回填**（见第六节；失败不降低当前最好 98.84） |
 
 ## 二、训练
@@ -85,8 +86,9 @@ md5（前 8 位）：seed42 `85e6eb57`｜seed 平均 `2658ddfe`｜avg_w10 `789ae
 
 **推荐顺序**（同口径校验过：`seed7` 的 98.84 反解 = `sigmoid(0.9·logit(ens10)+0.1·logit(seed7))`，max_err 5e-7）：
 
-1. **首选 `seed7_s42_ens10_logit_w10.csv`（#2）** — 与 98.84 **同结构同总权重**（家族 0.1），只是把 0.1 摊成 0.05+0.05。排序 rho=0.9998、top200 200/200，是「降低单 seed 方差」最干净的检验，预期落在 98.83–98.85。
-2. **次选 `seed7_s42_ens10_logit_w20.csv`（#4）** — 家族总权重翻倍（0.1 seed7 + 0.1 seed42），对应 SUBMISSIONS_LOG 里「提高家族权重」的下一步；rho=0.9985、top200 200/200。
+0. **（soup 实验后新增，见第八节）首选 `cnxb_512_e16_ra_all_soup_test_tta4_ens10_logit_w10.csv`** — ens10×0.9 + soup×0.1，rho(98.84)=**0.9992**、top200 **200/200**、均值漂移仅 1.8%；既检验 soup 又有最小的排序扰动。
+1. `seed7_s42_ens10_logit_w10.csv`（#2）— 与 98.84 **同结构同总权重**（家族 0.1），只是把 0.1 摊成 0.05+0.05。排序 rho=0.9998、top200 200/200，是「概率空间降方差」最干净的检验，预期落在 98.83–98.85。
+2. `seed7_s42_ens10_logit_w20.csv`（#4）— 家族总权重翻倍（0.1 seed7 + 0.1 seed42），对应 SUBMISSIONS_LOG 里「提高家族权重」的下一步；rho=0.9985、top200 200/200。
 3. 第三顺位 `..._s42_logit_w30.csv`（#7，家族 0.3 单 seed42）更激进（rho=0.9910），仅在前面无增益时再试。
 
 提交动作（人为，平台每日 1 次配额，**候选不自动提交**）：
@@ -118,3 +120,60 @@ python package_submission.py --csv seed7_s42_ens10_logit_w10.csv \
 - 概率：本目录根下 11 个 CSV（见第五节）+ `cnxb_512_e16_ra_all_s42_log.csv`
 - 复现：`bash tools/pipeline_145.sh`（一键：训练→TTA4→check→融合；`PYTHON=/root/miniconda3/bin/python`）
 - 已知偏差：本次运行用的是 `issue145-seed-avg` 分支合并前的版本，其 seed7 输入默认写 `oof/cnxb_512_e16_ra_all_test_tta4.csv`（仓库实际放在根目录），导致首轮跳过 seed 平均。已按根目录路径手工补跑（本文数据即补跑后产出）；main 上的 `tools/pipeline_145.sh` 现已默认根目录 + `oof/` 回退，后续按手册运行不会复现该问题。
+
+## 八、追加实验：seed7 + seed42 model soup（队长 #145 评论 2026-10-26 14:09Z，PR #148）
+
+**目的**：与概率空间平均（`tools/seed_average.py`）互补——权重空间平均只需推理**一个**模型，可能把两个 seed 的噪声一起平滑。
+
+**执行（同一台 4090，全程 2 分钟）**
+
+```bash
+python tools/seed_soup.py --ckpts runs/cnxb_512_e16_ra_all/last.pt \
+                                  runs/cnxb_512_e16_ra_all_s42/last.pt \
+                          --weights 0.5 0.5 --out runs/cnxb_512_e16_ra_all_soup/last.pt
+python tools/oof_predict.py --ckpt runs/cnxb_512_e16_ra_all_soup/last.pt \
+  --csv glaucoma_first/test.csv --cache-root cache_all768 --split-dir test \
+  --img-size 512 --tta 4 --use ema --out oof/cnxb_512_e16_ra_all_soup_test_tta4.csv
+python tools/fusion_ens10.py --ens10 submission_20251018_ens10_cal.csv \
+  --new oof/cnxb_512_e16_ra_all_soup_test_tta4.csv --out-dir oof
+```
+
+- soup 产出 `runs/cnxb_512_e16_ra_all_soup/last.pt`（704,988,303 B，`arch=convnext_base img=512 weights=[0.5,0.5]`，同时平均 `ema` 与 `model`）
+- 时间线：22:30:56 开始 → 22:31 soup 落盘 → 22:32:55 TTA4+融合+校验全部结束
+
+**soup 单成员校验**
+
+| 项 | soup | seed7 | seed42 |
+|---|---|---|---|
+| 行数 / 官方顺序 | 5855 / ✅ | 5855 / ✅ | 5855 / ✅ |
+| NaN / 越界 | 0 | 0 | 0 |
+| 概率范围 | [0.001637, 0.941034] | — | [0.000035, 0.999684] |
+| mean | **0.08149** | 0.05319 | 0.05075 |
+| pos@0.5 | 413 | 282 | 275 |
+
+> 注意：soup 的均值从 ~0.05 抬到 **0.0815**（更接近 ens10 的 0.0830）。这是**权重平均带来的校准变化**，不是排序问题；AUROC 只看排序，故不影响口径，但**若日后要用 0.5 阈值出 Pred_Label，必须重新校准**（本次候选的 Pred_Label 由各自 0.5 阈值生成，仅作格式完整，不参与评分）。
+
+**soup 与各成员的一致性（Spearman / top200）**
+
+| 对比 | Spearman | top200 |
+|---|---|---|
+| soup vs seed7 | 0.88212 | 194 |
+| soup vs seed42 | 0.89149 | 194 |
+| soup vs seed 概率平均 | 0.91202 | 197 |
+| soup vs ens10 | 0.85025 | 189 |
+| soup vs seed7 w10（98.84 候选） | 0.86468 | 190 |
+
+soup 与两个 seed 的相关（0.882/0.891）都略低于两 seed 之间的 0.8868 量级，但**比任一单 seed 更靠近 ens10**（0.850 vs 0.810/0.816），说明权重平均确实起了「居中」作用。
+
+**soup 融合候选（全部 5855/官方顺序/无 NaN）**
+
+| 文件 | 构成 | mean | pos@0.5 | rho(98.84) | top200 |
+|---|---|---|---|---|---|
+| `cnxb_512_e16_ra_all_soup_test_tta4_ens10_logit_w10.csv` | ens10×0.9 + soup×0.1 | 0.08258 | 418 | **0.9992** | **200** |
+| `..._ens10_logit_w20.csv` | ens10×0.8 + soup×0.2 | 0.08223 | 419 | 0.9982 | 200 |
+| `..._ens10_logit_w30.csv` | ens10×0.7 + soup×0.3 | 0.08195 | 422 | 0.9952 | 200 |
+| `..._ens10_rank_w10/20/30.csv` | rank 空间（探索） | ≈0.4999 | — | 0.90 量级 | 193 |
+
+md5（前 8 位）：soup `acb54eac`｜soup_w10 `4ab5a54e`｜soup_w20 `f9fbb066`｜soup_w30 `14d361e0`
+
+**结论**：soup 是把「两 seed 的权重噪声一起平滑」的低成本路径（2 分钟、单模型推理），其融合候选与 98.84 的排序几乎重合（w10 rho=0.9992、top200 200/200），因此**可以安全地作为下一次线上提交的候选**；收益方向与概率平均一致但机制不同，值得各占一次配额验证。
