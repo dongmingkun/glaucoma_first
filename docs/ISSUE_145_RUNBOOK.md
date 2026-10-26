@@ -11,7 +11,8 @@
 ## 前置
 - main 含 #131/#136/#140/#143/#144；
 - `cache_all768`（train/valid 各 57245、test 5855，#134 已建）；
-- `runs/cnxb_512_e16_ra/last.pt`（#128 train-only）做 check 对照；#138 的 seed7 test TTA4 作 seed 平均输入。
+- `runs/cnxb_512_e16_ra/last.pt`（#128 train-only）做 check 对照；#138 的 seed7 test TTA4 在仓库根
+  `cnxb_512_e16_ra_all_test_tta4.csv`（旧文档里的 `oof/` 是笔误；脚本仍兼容 oof/ 布局）。
 
 ## 一键（推荐）
 ```bash
@@ -46,12 +47,12 @@ python check_train_on_all.py --ckpt runs/cnxb_512_e16_ra_all_s42/last.pt \
 ```bash
 # 纯 seed 平均：0.5*logit(seed7) + 0.5*logit(seed42)
 python tools/seed_average.py \
-  --members oof/cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
+  --members cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
   --weights 0.5 0.5 --out oof/seed7_s42_test_tta4.csv
 
 # seed 平均 + ens10 logit 融合（w=0.10/0.15/0.20，按 #145）
 python tools/seed_average.py \
-  --members oof/cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
+  --members cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
   --weights 0.5 0.5 --fuse-ens10 submission_20251018_ens10_cal.csv \
   --fuse-weights 0.10 0.15 0.20 --fuse-mode logit --out-dir oof --tag seed7_s42
 

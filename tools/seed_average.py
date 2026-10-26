@@ -13,14 +13,14 @@
 
 用法
 ----
-  # 纯 seed 平均（logit 等权）
+  # 纯 seed 平均（logit 等权；#138 seed7 的 test CSV 在仓库根，不是 oof/）
   python tools/seed_average.py \
-    --members oof/cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
+    --members cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
     --weights 0.5 0.5 --out oof/seed7_s42_test_tta4.csv
 
   # seed 平均 + 与 ens10 logit 融合（w=0.10/0.15/0.20，按 #145）
   python tools/seed_average.py \
-    --members oof/cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
+    --members cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv \
     --weights 0.5 0.5 --fuse-ens10 submission_20251018_ens10_cal.csv \
     --fuse-weights 0.10 0.15 0.20 --out-dir oof --tag seed7_s42
 
@@ -49,10 +49,18 @@ def sigmoid(x):
 
 
 def rank01(a):
-    order = np.argsort(np.asarray(a, dtype=np.float64), kind="mergesort")
-    r = np.empty(len(a), dtype=np.float64)
-    r[order] = np.arange(len(a), dtype=np.float64)
-    return r / max(len(a) - 1, 1)
+    a = np.asarray(a, dtype=np.float64)
+    n = len(a)
+    order = np.argsort(a, kind="mergesort")
+    r = np.empty(n, dtype=np.float64)
+    i = 0
+    while i < n:
+        j = i + 1
+        while j < n and a[order[j]] == a[order[i]]:
+            j += 1
+        r[order[i:j]] = (i + j - 1) / 2.0       # 并列取平均秩，避免 rank 融合人为拆散 ties
+        i = j
+    return r / max(n - 1, 1)
 
 
 def spearman(a, b):
@@ -69,11 +77,12 @@ def read_names(path):
 
 def read_probs(path):
     d = {}
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
         rd = csv.DictReader(f)
-        col = "Probability" if "Probability" in (rd.fieldnames or []) else "Probability"
+        if "Probability" not in (rd.fieldnames or []):
+            sys.exit(f"ERROR: {path} 缺少 Probability 列")
         for r in rd:
-            d[r["Image_name"]] = float(r[col])
+            d[r["Image_name"]] = float(r["Probability"])
     return d
 
 
@@ -186,6 +195,9 @@ def self_test():
         # 手算一致性
         a2 = sigmoid(0.5 * np.log(m1 / (1 - m1)) + 0.5 * np.log(m2 / (1 - m2)))
         assert np.allclose(avg, a2, atol=1e-9), "logit 平均不一致"
+        # 并列秩：rank 融合不能人为拆散 ties
+        rt = rank01(np.array([0.1, 0.1, 0.5]))
+        assert np.allclose(rt, [0.25, 0.25, 1.0]), f"并列秩异常: {rt}"
         run([p1, p2], [0.5, 0.5], test_csv, os.path.join(td, "seed_avg.csv"),
             pe, [0.10, 0.15, 0.20], "logit", os.path.join(td, "oof"), "seed7_s42")
         outs = sorted(os.listdir(os.path.join(td, "oof")))

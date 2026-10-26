@@ -14,7 +14,10 @@ CACHE="${CACHE:-cache_all768}"
 TAG="${TAG:-cnxb_512_e16_ra_all_s42}"
 OUT="runs/${TAG}"
 REF="${REF:-runs/cnxb_512_e16_ra/last.pt}"                           # #128 train-only
-SEED7="${SEED7:-oof/cnxb_512_e16_ra_all_test_tta4.csv}"              # #138 seed7 test TTA4
+SEED7="${SEED7:-cnxb_512_e16_ra_all_test_tta4.csv}"                  # #138 seed7 test TTA4（仓库根）
+if [ ! -f "$SEED7" ] && [ -f "oof/$(basename "$SEED7")" ]; then
+  SEED7="oof/$(basename "$SEED7")"                                   # 兼容旧 oof/ 产物布局
+fi
 ENS10="${ENS10:-submission_20251018_ens10_cal.csv}"                  # 98.82 基线
 exec > >(tee -a "$LOG") 2>&1
 echo "===== #145 pipeline start $(date) ====="
@@ -59,6 +62,7 @@ with open(p, encoding='utf-8', newline='') as f:
 print('test rows=%d (期望 5855) 越界/NaN=%d range=[%.4f,%.4f]' % (n, bad, lo, hi))
 if n != 5855 or bad: sys.exit(1)
 PYEOF
+[ $? -eq 0 ] || { echo "ERROR: test 预测校验失败（行数/NaN/越界）"; exit 1; }
 
 echo "=== [4] check_train_on_all vs #128 train-only ==="
 if [ -f "$REF" ]; then
