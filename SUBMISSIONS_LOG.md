@@ -40,6 +40,8 @@
 | 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens21_swin2_cal.csv` | `fb4a750a` | **ens21_swin2**：base = ens9×0.65 + avg(Swin 阶段1, Swin train+all v3)×0.35，再混 8 成员家族×0.20 | 4x | 是 | 待回填 | 半对冲版本：一半保留已验证的 stage1，一半用 v3 数据升级；若 ens22 风险偏高可改交此版 |
 | 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens23_swinv3w30_cal.csv` | `118af0c1` | **ens23_swinv3w30**：同 ens22 但 v3 权重 0.35→0.30 | 4x | 是 | 待回填 | 更保守的 v3 暴露；与 ens21 排序相关 0.9961 |
 
+| 2026-10-26（计划·soup） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `cnxb_512_e16_ra_all_soup_test_tta4_ens10_logit_w10.csv` → 上传名 `submission.csv` | `4ab5a54e` | #145 追加实验：seed7+seed42 **model soup**（0.5/0.5 权重平均）× 0.1 + ens10 × 0.9 | 4x | 否 | 待回填 | 待回填：与 98.84 排序 rho=0.9992 / top200 200；soup 单模 mean 0.0815（权重平均抬升校准，不影响 AUROC 口径） |
+
 | 2026-10-26（计划·待回填） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 待回填 | 待回填：与 98.84 同结构同总权重，仅把家族 0.1 摊成 0.05+0.05（rho=0.9998 / top200 200）；备选 `seed7_s42_ens10_logit_w20.csv`（`33354c5a`） |
 
 ### 2026-10-19 本地负结果（未提交）
