@@ -19,7 +19,7 @@ import numpy as np
 ENS10_DEFAULT = "submission_20251018_ens10_cal.csv"
 NEW_DEFAULT = "oof/cnxb_512_e16_ra_all_test_tta4.csv"
 TEST_ORDER = "glaucoma_first/test.csv"
-WEIGHTS = (0.1, 0.2, 0.3)
+DEFAULT_WEIGHTS = (0.1, 0.2, 0.3)   # 向后兼容默认；可用 --weights 覆盖（#152 需 0.10/0.15/0.20/0.25）
 
 
 def read_probs(path):
@@ -69,7 +69,7 @@ def topk_overlap(a, b, k=200):
     return len(ta & tb) / k
 
 
-def run(ens10_path, new_path, out_dir):
+def run(ens10_path, new_path, out_dir, weights=DEFAULT_WEIGHTS):
     ens10 = read_probs(ens10_path)
     new = read_probs(new_path)
     if set(ens10) != set(new):
@@ -99,7 +99,7 @@ def run(ens10_path, new_path, out_dir):
     os.makedirs(out_dir, exist_ok=True)
     stem = os.path.splitext(os.path.basename(new_path))[0]
     for mode, (a, b) in (("rank", (pe, pn)), ("logit", (le, ln))):
-        for w in WEIGHTS:
+        for w in weights:
             if mode == "rank":
                 ra = np.argsort(np.argsort(a)).astype(float) / len(a)
                 rb = np.argsort(np.argsort(b)).astype(float) / len(b)
@@ -142,6 +142,8 @@ def main():
     ap.add_argument("--ens10", default=ENS10_DEFAULT, help="ens10 校准提交 CSV（98.82 基线）")
     ap.add_argument("--new", default=NEW_DEFAULT, help="#138 新成员 test TTA4 CSV")
     ap.add_argument("--out-dir", default="oof")
+    ap.add_argument("--weights", nargs="+", type=float, default=None,
+                    help="logit/rank 融合权重（默认 0.1 0.2 0.3；#152 用 0.10 0.15 0.20 0.25）")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     if args.self_test:
@@ -149,7 +151,10 @@ def main():
         return
     if not os.path.exists(args.ens10):
         sys.exit(f"ERROR: {args.ens10} 不存在（ens10 校准提交应在仓库根目录）")
-    run(args.ens10, args.new, args.out_dir)
+    weights = tuple(args.weights) if args.weights else DEFAULT_WEIGHTS
+    if any(w <= 0 or w >= 1 for w in weights):
+        sys.exit(f"ERROR: 权重需在 (0,1) 内，收到 {weights}")
+    run(args.ens10, args.new, args.out_dir, weights)
 
 
 if __name__ == "__main__":
