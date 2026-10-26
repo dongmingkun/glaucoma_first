@@ -40,6 +40,8 @@
 | 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens21_swin2_cal.csv` | `fb4a750a` | **ens21_swin2**：base = ens9×0.65 + avg(Swin 阶段1, Swin train+all v3)×0.35，再混 8 成员家族×0.20 | 4x | 是 | 待回填 | 半对冲版本：一半保留已验证的 stage1，一半用 v3 数据升级；若 ens22 风险偏高可改交此版 |
 | 2026-10-22（备选·未提交） | @dongmingkun | `submission_20251022_ens23_swinv3w30_cal.csv` | `118af0c1` | **ens23_swinv3w30**：同 ens22 但 v3 权重 0.35→0.30 | 4x | 是 | 待回填 | 更保守的 v3 暴露；与 ens21 排序相关 0.9961 |
 
+| 2026-10-26（计划·待回填） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 待回填 | 待回填：与 98.84 同结构同总权重，仅把家族 0.1 摊成 0.05+0.05（rho=0.9998 / top200 200）；备选 `seed7_s42_ens10_logit_w20.csv`（`33354c5a`） |
+
 ### 2026-10-19 本地负结果（未提交）
 
 - **staged 续训的 small@512 × train+all × 伪标签成员被拒**（run `convnext_small_512_1019_163540_cs_hi512_all_pseudo_b_cont3`，最终 EMA）。
@@ -162,5 +164,3 @@ vs 当前 ens7 = `hi2×2+Base384+B3(0.5)` → 0.87956 / 93.579 / **96.125**。
 ## 口径结论（2026-10-16 锁定）
 三个数据点联合拟合，**复合指标 `0.5×balACC@0.5 + 0.25×AUROC + 0.25×AUPRC`** 全部命中（残差 ≤0.25），
 纯混合分/纯平衡准确率的残差都在 ±1.5。策略含义：**校准（决定 balACC 那 50%）与模型质量（决定排序那 50%）同等重要，两者都要继续投入**。
-
-| 2026-10-26（计划·待回填） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 待回填 | 待回填：与 98.84 同结构同总权重，仅把家族 0.1 摊成 0.05+0.05（rho=0.9998 / top200 200）；备选 `seed7_s42_ens10_logit_w20.csv`（`33354c5a`） |

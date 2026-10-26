@@ -92,10 +92,12 @@ md5（前 8 位）：seed42 `85e6eb57`｜seed 平均 `2658ddfe`｜avg_w10 `789ae
 提交动作（人为，平台每日 1 次配额，**候选不自动提交**）：
 
 ```bash
-# 1) 生成平台要求的文件名
-python cloud_run/make_submit_145.py issue145/out/seed7_s42_ens10_logit_w10.csv
-# -> submit_ready/submission.csv + md5 + 台账行草稿
-# 2) 登录比赛平台上传 submission.csv，记录 ID 与分数
+# 1) 生成平台要求的文件名（仓库根的 package_submission.py，已内置 5855/顺序/范围校验）
+python package_submission.py --csv seed7_s42_ens10_logit_w10.csv \
+  --name issue145_seed7_s42_w10 --expected 98.84
+# -> D:/glaucoma_work/submissions/<date>_issue145_seed7_s42_w10/submission.csv + manifest.md
+# Linux/云端无 D: 盘时追加 --out-root submit_ready
+# 2) 登录比赛平台上传该目录下的 submission.csv，记录 ID 与分数
 ```
 
 **线上验证回填（待办）**
