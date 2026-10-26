@@ -66,11 +66,10 @@ python tools/fusion_ens10.py \
 同时算与三个参照的排序一致性（CPU）：
 
 ```bash
-python tools/seed_average.py \
-  --members oof/cnxb_512_e16_ra_all_soup_test_tta4.csv \
-            cnxb_512_e16_ra_all_test_tta4.csv \
-            cnxb_512_e16_ra_all_s42_test_tta4.csv \
-  --weights 0.5 0.25 0.25 --out oof/soup_sanity.csv
+python tools/oof_report.py metrics --names-only --labels glaucoma_first/test.csv \
+  --probs oof/cnxb_512_e16_ra_all_soup_test_tta4.csv \
+          cnxb_512_e16_ra_all_test_tta4.csv \
+          cnxb_512_e16_ra_all_s42_test_tta4.csv
 ```
 
 - soup vs seed7/seed42 的 Spearman：同配方应较高（>0.90 合理；<0.80 视为 soup 漂移，弃用）；
