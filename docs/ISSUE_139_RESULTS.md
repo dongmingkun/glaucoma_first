@@ -1,9 +1,10 @@
-[ISSUE_118_RESULTS.md](https://github.com/user-attachments/files/33974426/ISSUE_118_RESULTS.md)
 # Issue #118/#139 结果记录 — Swin-B@384 16ep × 3-fold clean OOF + test（#127 异构 fold 成员）
 
 > 状态：**已执行完成**（本机 RTX 5060 Laptop 8GB，非云端 24GB；详见「执行与事故记录」）。
 > 流水线等价 `tools/pipeline_118.sh`（用 `local_run139.sh` 本地适配：bs4×accum12、按折续跑、先校验后落盘），
 > 含 PR #131（OOF 固定 `last.pt + --use ema`）与 PR #136（空 Age 同口径清洗、失败即停）的全部防线。
+>
+> **结案状态**：本成员 valid 无增益（best w=0），不纳入 #127 stack；权重/OOF CSV 不再发布（避免无效大文件）。
 
 ## 配置
 
