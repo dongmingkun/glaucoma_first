@@ -42,7 +42,8 @@
 
 | 2026-10-26（计划·soup） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `cnxb_512_e16_ra_all_soup_test_tta4_ens10_logit_w10.csv` → 上传名 `submission.csv` | `4ab5a54e` | #145 追加实验：seed7+seed42 **model soup**（0.5/0.5 权重平均）× 0.1 + ens10 × 0.9 | 4x | 否 | 待回填 | 待回填：与 98.84 排序 rho=0.9992 / top200 200；soup 单模 mean 0.0815（权重平均抬升校准，不影响 AUROC 口径） |
 
-| 2026-10-26（计划·待回填） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 待回填 | 待回填：与 98.84 同结构同总权重，仅把家族 0.1 摊成 0.05+0.05（rho=0.9998 / top200 200）；备选 `seed7_s42_ens10_logit_w20.csv`（`33354c5a`） |
+| 2026-10-26（计划·未提交） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 未提交 | 实际提交 w20（见下一行）；w10 仅作对照 |
+| 2026-10-27 00:11 | @dongmingkun | `submission_20261026_issue145_seed7_s42_w20_cal/submission.csv`（ID 21547） | `33354c5a` | #145 seed7+seed42 概率平均 w20：ens10×0.8 + seed平均×0.2 | 4x | 否 | **98.84** | ⚠️ 与 98.84 打平，无提分；seed 平均线收益饱和；同分且时间更晚，榜单名次可能不升/略降 |
 
 ### 2026-10-19 本地负结果（未提交）
 
