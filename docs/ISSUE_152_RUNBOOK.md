@@ -75,3 +75,9 @@ tail -f /root/run152.log
 - 融合候选 CSV（w=0.10/0.15/0.20/0.25）
 - `docs/ISSUE_152_RESULTS.md`：训练日志/耗时、全部校验数字、**推荐哪一个候选 + 理由**
 - **不要自动提交**
+
+## 七、实战补充（2026-10-27 真机踩坑，务必先看）
+1. **CSV 路径不是同一个目录**：`seed7` 的 test TTA4 在**仓库根**（`cnxb_512_e16_ra_all_test_tta4.csv`），而 `seed42` / `s123` 的产物在 **`oof/`** 下。本 PR 已修正 `pipeline_152.sh` 的 `--members` 路径（原先写成根目录 → `FileNotFoundError` → 3-seed 平均整段失败）。
+2. **看门狗要有崩溃循环保护**：本次云端 watchdog 以「无进程且无 `pipeline DONE`」为续跑条件，遇到上面那个确定性失败 → **每 2 分钟重启一次、连续 4.5 小时空转**（每次重跑一遍 TTA4）。正确做法：记录重启次数（如 ≤3 次）或检测「上次退出码/最近 10 分钟无新增日志」就停止并写 `NEED_ATTENTION` 标记。
+3. **训练是安全的**：训练完成 (`done. train-on-all 16 epochs`) 后 `last.pt` 已在盘，任何推理段失败都不会影响权重；重跑只需 `--ckpt` 指向它。
+4. **权重上传走云端**：705MB 从云端 `uploads.github.com` 上传约 **60 s（11.7 MB/s）**，比本地代理快两个数量级；下载仍走 `ghfast.top` + `aria2c`。
