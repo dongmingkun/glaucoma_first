@@ -44,6 +44,7 @@
 
 | 2026-10-26（计划·未提交） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `seed7_s42_ens10_logit_w10.csv` → 上传名 `submission.csv` | `789aedb8` | #145 seed42 train+all Base@512 RA（seed7+seed42 logit 平均 × 0.1 + ens10 × 0.9） | 4x | 否 | 未提交 | 实际提交 w20（见下一行）；w10 仅作对照 |
 | 2026-10-27 00:11 | @dongmingkun | `submission_20261026_issue145_seed7_s42_w20_cal/submission.csv`（ID 21547） | `33354c5a` | #145 seed7+seed42 概率平均 w20：ens10×0.8 + seed平均×0.2 | 4x | 否 | **98.84** | ⚠️ 与 98.84 打平，无提分；seed 平均线收益饱和；同分且时间更晚，榜单名次可能不升/略降 |
+| 2026-10-27 19:24 | @dongmingkun | `FINAL_SUBMIT_20261028/submission.csv`（ID 22205） | `4bf37b7c` | **RA_avg+Swin 全证据**：ens10×0.6 + seedavg×0.1 + (RA_best+RA_last)/2×0.15 + Swin_pair×0.15（rank） | 4x | 否 | **98.87** | ✅ **+0.03 vs 98.84**，RA/Swin 方向首次线上有效；全国约 43/669（98.87 同分、时间较晚）、西北第 8、陕西第 4 |
 
 ### 2026-10-19 本地负结果（未提交）
 
