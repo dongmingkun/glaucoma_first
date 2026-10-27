@@ -46,6 +46,8 @@
 | 2026-10-27 00:11 | @dongmingkun | `submission_20261026_issue145_seed7_s42_w20_cal/submission.csv`（ID 21547） | `33354c5a` | #145 seed7+seed42 概率平均 w20：ens10×0.8 + seed平均×0.2 | 4x | 否 | **98.84** | ⚠️ 与 98.84 打平，无提分；seed 平均线收益饱和；同分且时间更晚，榜单名次可能不升/略降 |
 | 2026-10-27 19:24 | @dongmingkun | `FINAL_SUBMIT_20261028/submission.csv`（ID 22205） | `4bf37b7c` | **RA_avg+Swin 全证据**：ens10×0.6 + seedavg×0.1 + (RA_best+RA_last)/2×0.15 + Swin_pair×0.15（rank） | 4x | 否 | **98.87** | ✅ **+0.03 vs 98.84**，RA/Swin 方向首次线上有效；全国约 43/669（98.87 同分、时间较晚）、西北第 8、陕西第 4 |
 
+| 2026-10-28（计划·Swin第二seed） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `blend157_b1_w50201515.csv` → 上传名 `submission.csv` | `bbd3520d` | #157 Swin-B@384 train+all seed123：rank(0.50 ens10 + 0.20 RA_avg + 0.15 Swin_pair + 0.15 new Swin) | 4x | 否 | 待回填 | 待回填：vs V4 实际 98.87 rho=0.9933 / top200 198；新 Swin 与 RA 家族 rho 仅 0.70–0.78（真·新架构信号） |
+
 ### 2026-10-19 本地负结果（未提交）
 
 - **staged 续训的 small@512 × train+all × 伪标签成员被拒**（run `convnext_small_512_1019_163540_cs_hi512_all_pseudo_b_cont3`，最终 EMA）。
