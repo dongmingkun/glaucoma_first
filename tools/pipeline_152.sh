@@ -54,10 +54,10 @@ $PY tools/oof_predict.py --ckpt "$OUT/last.pt" \
   --img-size 512 --tta 4 --use ema --out "$S123_CSV" \
   || { echo "PREDICT FAILED rc=$?"; exit 1; }
 
-echo "=== [4] 3-seed 概率平均（seed7 + seed42 + seed123，等权）==="
+echo "=== [4] 3-seed 概率平均（seed7=根目录 CSV；seed42/s123=oof/ 下产物）==="
 AVG3_CSV="oof/seed7_s42_s123_test_tta4.csv"
 $PY tools/seed_average.py \
-  --members cnxb_512_e16_ra_all_test_tta4.csv cnxb_512_e16_ra_all_s42_test_tta4.csv "$S123_CSV" \
+  --members cnxb_512_e16_ra_all_test_tta4.csv oof/cnxb_512_e16_ra_all_s42_test_tta4.csv "$S123_CSV" \
   --weights 1 1 1 --out "$AVG3_CSV" \
   || { echo "3-seed 平均 FAILED rc=$?"; exit 1; }
 
