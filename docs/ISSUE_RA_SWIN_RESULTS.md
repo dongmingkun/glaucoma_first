@@ -28,3 +28,8 @@
 - 2026-10-28 00:01 提交 `NEXT_SUBMIT_98.9_v4/submission.csv`（md5 `fb62324b`），线上 **98.85**，低于 98.87。
 - V4 = 0.40 ens10 +0.35 RA_avg +0.25 Swin_pair；把 RA/Swin 从 0.15/0.15 提到 0.35/0.25 属于过冲。
 - 结论：98.87 的 0.15/0.15 已接近该方向最优点；继续加 RA/Swin 权重不再作为首选。下一手改新架构信号 B1（md5 `bbd3520d`）或等 #161 Large。
+
+## 后续：S1 小步 new Swin 线上结果（ID 22732）
+- 2026-10-28 00:06 提交 S1（md5 `50ce9244`），线上 **98.87**，与最好打平。
+- S1 = 0.60 ens10 +0.15 RA_avg +0.15 Swin_pair +0.10 new Swin（把 seedavg 0.10 换成 new Swin）。
+- 新 Swin 0.10 不足以跨档；下一手 B1（new Swin 0.15，md5 `bbd3520d`）或等 #161 Large。
