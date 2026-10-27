@@ -3,7 +3,7 @@
 # 前置：runs/swinb_384_all_s123/last.pt 已存在（train_157.sh 产出）、cache_all768、以下组件 CSV 在仓库目录：
 #   submission_20251018_ens10_cal.csv（ens10）
 #   cnxb_512_e16_ra_test_best_tta4.csv / _last_tta4.csv（RA_avg）
-#   swinb_384_e16_test_probs_tta4.csv / swinb_384_all_v3_test_probs_tta4.csv（Swin_pair）
+#   swinb_384_e16_test_probs_tta4.csv + swinb_384_e16_s7_test_probs_tta4.csv（Swin_pair；stage1+s7，均 train-only，无测试伪标签）
 #   oof/seed7_s42_test_tta4.csv（seedavg，仅用于重建 98.87 对照）
 set -u
 set -o pipefail
@@ -15,7 +15,9 @@ echo "===== #157 candidates start $(date) ====="
 
 ENS10=submission_20251018_ens10_cal.csv
 RA="cnxb_512_e16_ra_test_best_tta4.csv,cnxb_512_e16_ra_test_last_tta4.csv"
-SWP="swinb_384_e16_test_probs_tta4.csv,swinb_384_all_v3_test_probs_tta4.csv"
+S1=swinb_384_e16_test_probs_tta4.csv
+S7=swinb_384_e16_s7_test_probs_tta4.csv
+if [ -f "$S7" ]; then SWP="$S1,$S7"; else SWP="$S1"; echo "WARN: $S7 缺失，Swin_pair 退化为 stage1 单成员"; fi
 SEEDAVG=oof/seed7_s42_test_tta4.csv
 NEW=oof/swinb_384_all_s123_test_tta4.csv
 
@@ -56,7 +58,10 @@ $PY tools/rank_blend.py \
   --ref oof/blend157_ctl_987.csv --out oof/blend157_b3_w45201025.csv \
   || echo "WARN B3 失败"
 
-echo "=== [4] 事件：v3 与 new 的 seed soup（若 fp16 ckpt 可读则做）==="
+echo "=== [4] 可选 leaderboard-only：v3 与 new 的 seed soup（v3 为 train+all+pseudo，默认跳过；ALLOW_PSEUDO=1 才做）==="
+if [ "${ALLOW_PSEUDO:-0}" != "1" ]; then
+  echo "SKIP: v3 是 train+all+pseudo，默认不构建；最终合规包禁止使用"
+else
 if $PY - <<'PY'
 import sys
 try:
@@ -82,6 +87,7 @@ then
     || echo "WARN soup 分支失败（跳过，不影响主候选）"
 else
   echo "SKIP: v3 fp16 无 ema 键或不可读 → 按工单「不在就跳过」"
+fi
 fi
 
 echo "=== [5] 强制校验 ==="
