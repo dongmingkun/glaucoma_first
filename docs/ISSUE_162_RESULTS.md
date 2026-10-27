@@ -8,7 +8,7 @@ python tools/oof_predict.py --ckpt runs/cnxb_512_e16_ra_soup/last.pt \
   --csv glaucoma_first/test.csv --cache-root cache_all768 --split-dir test \
   --img-size 512 --tta 4 --use ema --out oof/cnxb_512_e16_ra_soup_test_tta4.csv
 产物：oof/cnxb_512_e16_ra_soup_test_tta4.csv（5855 行 / 官方顺序 / 无 NaN）
-cache_all768：本机用 cache768 硬链接构建（train/valid/test 各 63100，os.link，零额外磁盘）
+cache_all768：本机用 cache768 硬链接构建（train/valid/test = 57245/57245/5855，os.link，零额外磁盘）
 B. Swin soup ❌ 未执行
 工单指定的 swin_base_384_1021_124939_swinb_384_e16_s2024/last.pt 与 ..._s7/last.pt 不在本机、不在上游任何 Release（已核对全部 13 个 Release 资产清单）。weights-1016 只有 s7/stage1 的概率 CSV（已拉取），无 ckpt。按工单"缺 ckpt 就跳过，不要用 v3 pseudo"——跳过。
 
@@ -24,7 +24,7 @@ V5a 明细
 md5：1eb4b12e586a825d1511317ca5aa4bb7（Swin_pair 已改用官方 #160 文件重算；旧近似版 9688e8be 作废）
 对照 V4（rank 融合复现）：rho = 0.9872，top200 = 197/200（<0.995，非打平组合）
 成员相关性：RA_soup 0.9083 / Swin_pair 0.9043 / ens10 0.9394 —— 三成员分布均衡，无单一主导
-打包：submission_20261027_V5a_rasoup_swinpair_cal.zip（md5 9854c2084325eb734557e011ceba8af3；zip 内 submission.csv md5 = 1eb4b12e...，与外层一致，已验证）
+打包：submission_20261027_V5a_rasoup_swinpair_cal.zip（md5 9854c2084325eb734557e011ceba8af3；zip 内 submission.csv md5 = 1eb4b12e...，与外层一致，已验证）。**CSV/zip 尚未上传到仓库/Release，提交前需先拿到文件。**
 合规
 RA_best/last（train-only）、stage1/s7（train-only）均无测试伪标签；v3 pseudo 全程未使用；
 V5a 为 test-only 探索候选，未自动提交，是否线上验证由队长决定。
