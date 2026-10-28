@@ -49,6 +49,9 @@
 | 2026-10-28 00:06 | @dongmingkun | `NEXT_SUBMIT_S1/submission.csv`（ID 22732） | `50ce9244` | S1 小步换血：ens10×0.60 + RA_avg×0.15 + Swin_pair×0.15 + new Swin×0.10（rank） | 4x | 否 | **98.87** | ⚠️ 与 98.87 打平，无提分；new Swin 0.10 不足以跨档；保留 98.87 |
 
 | 2026-10-28（计划·Swin第二seed） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `blend157_b1_w50201515.csv` → 上传名 `submission.csv` | `bbd3520d` | #157 Swin-B@384 train+all seed123：rank(0.50 ens10 + 0.20 RA_avg + 0.15 Swin_pair + 0.15 new Swin) | 4x | 否 | 待回填 | 待回填：vs V4 实际 98.87 rho=0.9933 / top200 198；新 Swin 与 RA 家族 rho 仅 0.70–0.78（真·新架构信号） |
+| 2026-10-28（计划·Large384） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `blend161_v4l_w35302015.csv` → 上传名 `submission.csv` | `e3ddd565` | #161 ConvNeXt-Large@384 train+all seed123：rank(0.35 ens10 + 0.30 RA_avg + 0.20 Swin_pair + 0.15 Large384) | 4x | 否 | 待回填 | 待回填：vs 98.87(重建) rho=0.9853 / top200 194；Large384 与 RA 家族 rho 0.80–0.83（新容量信号，比换 seed 远得多） |
+| 2026-10-28（备选·未提交·Large384激进） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `blend161_agg_w30302020.csv` → 上传名 `submission.csv` | `225ec768` | #161 激进版：rank(0.30 ens10 + 0.30 RA_avg + 0.20 Swin_pair + 0.20 Large384) | 4x | 否 | 未提交 | 位移最大（rho=0.9793 / top200 190）但 ens10 被压到 0.30，风险高于 V4+Large |
+| 2026-10-28（计划·V6a soup） | @Yulingling-sc（产出）/ @dongmingkun（提交） | `blend168_v6a_rasoup.csv` → 上传名 `submission.csv` | `41e3392e` | #168 同权重单变量：0.60 ens10 + 0.10 seedavg + 0.15 **RA_soup** + 0.15 Swin_pair（RA 由概率平均换成权重 soup） | 4x | 否 | 待回填 | 待回填：rho=0.99578 / top200 198 → **实质打平，不建议单独投**；若一定要投 soup 方向选 V6c（`84a93db1`，rho 0.9923 / top200 195） |
 
 ### 2026-10-19 本地负结果（未提交）
 
