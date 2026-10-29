@@ -1,0 +1,222 @@
+{
+  "issue": 186,
+  "task_a": {
+    "target": "FINAL_SUBMIT_20261028/submission.csv",
+    "target_md5": "4bf37b7c062f7d45a9c5a8e287fff1eb",
+    "target_present_locally": false,
+    "reproduced_md5": "4bf37b7c062f7d45a9c5a8e287fff1eb",
+    "md5_match": true,
+    "verdict": "PASS",
+    "method": "target 文件本身不在仓库/Release/任何分支，无法逐行 diff；改用「用公开输入独立重算 → MD5 与目标完全一致」判定，MD5 相同即字节级相同（逐行最大差 0、标签翻转 0）。",
+    "recipe": {
+      "formula": "0.60*rank(ens10) + 0.10*rank(seed7_s42_test_tta4.csv) + 0.15*(0.5*rank(RA_best)+0.5*rank(RA_last)) + 0.15*rank(swin_pair)",
+      "rank": "(rank-1)/(n-1)，并列取平均秩（0-based）",
+      "ra_avg": "先各自 rank 再 0.5/0.5 平均（不重新排名）",
+      "seedavg_input": "seed7_s42_test_tta4.csv（不是 seed7/seed42 概率平均）",
+      "format": "CRLF + header + %.6f + Pred_Label=score>=0.5"
+    },
+    "row_max_absdiff_vs_target": 0.0,
+    "label_flips_vs_target": 0,
+    "rows": 5855,
+    "score_mean": 0.5,
+    "score_range": [
+      0.002148,
+      0.999974
+    ],
+    "output_file": "docs/audit_98_87/FINAL_REPRO_98_87.csv",
+    "output_sha256": "e4092e45518b95557d3256763de80f22b782978fbe4e155df543c85db556f8f7",
+    "reproduce_command": "python tools/reproduce_98_87.py --check-md5 --out docs/audit_98_87/FINAL_REPRO_98_87.csv"
+  },
+  "task_b": {
+    "checks_on_reproduced_csv": {
+      "rows_5855": true,
+      "header_3cols": true,
+      "all_rows_3cols": true,
+      "official_order": true,
+      "unique_names": true,
+      "all_finite": true,
+      "prob_in_0_1": true,
+      "label_matches_prob_ge_0.5": true,
+      "crlf_line_endings": true,
+      "no_bom": true
+    },
+    "verdict": "PASS",
+    "target_csv_direct_check": "BLOCKED（目标文件不在本机）——上表是对字节级相同的复现件做的等价核验",
+    "compliant_pkg": {
+      "expected": "475.82MB，3 模型",
+      "present_locally": false,
+      "verified_from_release": {
+        "cb384": {
+          "bytes": 176328125,
+          "release": "weights-1016"
+        },
+        "cs_hi512_all": {
+          "bytes": 199660651,
+          "release": "weights-1016"
+        },
+        "cs_hi512_all_ra": {
+          "bytes": 99831694,
+          "release": "compliant_pkg-1028"
+        }
+      },
+      "total_bytes": 475820470,
+      "total_mb_decimal": 475.82,
+      "contains_test_only_component": false,
+      "note": "三个权重合计 475,820,470 B = 475.82 MB，与工单一致；三者均为 ImageNet 预训练骨干 + 官方 train/valid 微调，不含 98.87 的 seedavg / rank 融合等 test-only 成分。包体本身不在本机，未做解压核验。"
+    },
+    "cost_py": {
+      "present": false,
+      "status": "未验证"
+    },
+    "prediction_csv": {
+      "present": false,
+      "status": "未验证"
+    },
+    "constraints_honored": [
+      "未上传平台",
+      "未修改任何输入 CSV",
+      "未用 test 标签做任何拟合"
+    ]
+  },
+  "inputs": {
+    "ens10": {
+      "file": "submission_20251018_ens10_cal.csv",
+      "bytes": 152264,
+      "sha256": "aa886d901a354345413356315e4de75c7ed17dbfce6bdf09e09ba7dade9a9b44",
+      "md5_lf": "7bed58a6a300a9c38245f48e5e5aed19",
+      "md5_crlf": "ce91bbf48d6c8e05d7f67a43d902a5ae",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 0.000163,
+      "max": 0.999389,
+      "mean": 0.083003
+    },
+    "seed7": {
+      "file": "cnxb_512_e16_ra_all_test_tta4.csv",
+      "bytes": 152264,
+      "sha256": "3bea1c6e5dbf9e53dfb6b9009b75600aade480d9bb51057bb2884df2989e02f8",
+      "md5_lf": "c6fbf63687770608d1e86b2c247a1fc1",
+      "md5_crlf": "b89f39809899f42a89f49c6bde6f0664",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 4.5e-05,
+      "max": 0.999257,
+      "mean": 0.053191
+    },
+    "seed42": {
+      "file": "cnxb_512_e16_ra_all_s42_test_tta4.csv",
+      "bytes": 152264,
+      "sha256": "bd0ca82194bd2b267ca424dcd636be2cc6dd87a1bea286ba201d6bc20e4810a6",
+      "md5_lf": "25a109d85094916a373a19ffb6027c09",
+      "md5_crlf": "85e6eb57c3e0ffa3ee7e79f66594a3f4",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 3.5e-05,
+      "max": 0.999684,
+      "mean": 0.050754
+    },
+    "seed7_s42_file": {
+      "file": "seed7_s42_test_tta4.csv",
+      "bytes": 152264,
+      "sha256": "9f9962b85056872a80f6968601e1da29e66b877d88209a1ae0862435987215a6",
+      "md5_lf": "3b1aa97fd5add2f9add3d9f998648cdc",
+      "md5_crlf": "2658ddfe1376a929e2107ca8c13c42ca",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 4e-05,
+      "max": 0.999515,
+      "mean": 0.05157
+    },
+    "ra_best": {
+      "file": "cnxb_512_e16_ra_test_best_tta4.csv",
+      "bytes": 152264,
+      "sha256": "f434008b0b1bac3e3cc35b965147616a19b23f82647181833787636e1e99af58",
+      "md5_lf": "077d600f9c0f392be7f3afe22da1cbdf",
+      "md5_crlf": "6f8c7308afa7076b7397f52e61b07b82",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 3.2e-05,
+      "max": 0.999154,
+      "mean": 0.05514
+    },
+    "ra_last": {
+      "file": "cnxb_512_e16_ra_test_last_tta4.csv",
+      "bytes": 152264,
+      "sha256": "f36602d2fc689f2ce9eed7cd8ff204612045dd58c74bbf386f6347c2efe44d7b",
+      "md5_lf": "1262969287a9d71accab8d7587cb161e",
+      "md5_crlf": "692c6e7b483784d7a55cf04d98b90c95",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 1.7e-05,
+      "max": 0.999683,
+      "mean": 0.051361
+    },
+    "swin_pair": {
+      "file": "swin_pair_test_tta4.csv",
+      "bytes": 152264,
+      "sha256": "760e3242495a1cb3fda7ec7e645bdcd2ef9f9dc34c01a9df4941fde341baa567",
+      "md5_lf": "8cea0b01575933f11896d7a961294171",
+      "md5_crlf": "0825072672651298f36e3e7991ab60ad",
+      "rows": 5855,
+      "names_match_official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "min": 0.000135,
+      "max": 0.999838,
+      "mean": 0.060106
+    },
+    "official_test_csv": {
+      "file": "test.csv",
+      "bytes": 117115,
+      "sha256": "38aa66608cb07a7dad643550d416c8832920d4da7ae9b026c2df809d69c0cca5",
+      "md5_lf": "438887acdfa61244dd7af97851e57218",
+      "md5_crlf": "6a879ef96710965fa531cafa9559dbcf",
+      "rows": 5855,
+      "unique_names": true
+    }
+  },
+  "input_md5_reconciliation": {
+    "ens10": {
+      "repo_blob_lf": "7bed58a6a300a9c38245f48e5e5aed19",
+      "windows_crlf": "ce91bbf48d6c8e05d7f67a43d902a5ae",
+      "issue_text_says": "ce91bbf4",
+      "conclusion": "台账/工单记的是 Windows CRLF 版本，与仓库 LF 版本内容一致，不是版本分歧"
+    },
+    "swin_pair": {
+      "repo_blob_lf": "8cea0b01575933f11896d7a961294171",
+      "windows_crlf": "0825072672651298f36e3e7991ab60ad",
+      "issue178_text_says": "08250726",
+      "conclusion": "同上；#178 文档里的 08250726 是 CRLF 版本"
+    }
+  },
+  "missing_items": [
+    {
+      "item": "FINAL_SUBMIT_20261028/submission.csv",
+      "reason": "队长本地文件；仓库、Release、全部分支与历史均无"
+    },
+    {
+      "item": "compliant_pkg 包体（3 个 .pt 打包件）",
+      "reason": "本机无；仅能从 Release 资产字节数核对 475.82MB"
+    },
+    {
+      "item": "cost.py / prediction.csv",
+      "reason": "本机不存在，按工单标记未验证"
+    }
+  ],
+  "delivery": {
+    "path_requested": "D:/glaucoma_work/runs/feedback_20261024/audit_98_87",
+    "note": "本机 D: 根目录不可写（PermissionError WinError 5）；同结构产物随本 PR 落在 docs/audit_98_87/，内容一致"
+  }
+}

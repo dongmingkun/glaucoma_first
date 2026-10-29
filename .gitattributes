@@ -1,0 +1,2 @@
+# 审计产物按原字节保存：98.87 复现件的 md5 依赖 CRLF，不能被 autocrlf 归一化
+docs/audit_98_87/*.csv -text
