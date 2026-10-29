@@ -1,0 +1,217 @@
+{
+  "issue": 185,
+  "delivered_by": "PR #155（#152）—— 本脚本只做 CPU 侧复核，不重跑训练",
+  "members": {
+    "seed7": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.053191,
+      "pos_at_0.5": 282,
+      "min": 4.5e-05,
+      "max": 0.999257
+    },
+    "seed42": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.050754,
+      "pos_at_0.5": 275,
+      "min": 3.5e-05,
+      "max": 0.999684
+    },
+    "seed123": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.052785,
+      "pos_at_0.5": 285,
+      "min": 2.6e-05,
+      "max": 0.99953
+    },
+    "avg2": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.05157,
+      "pos_at_0.5": 278,
+      "min": 4e-05,
+      "max": 0.999515
+    },
+    "avg3": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.051787,
+      "pos_at_0.5": 282,
+      "min": 3.9e-05,
+      "max": 0.999515
+    },
+    "ens10": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.083003,
+      "pos_at_0.5": 420,
+      "min": 0.000163,
+      "max": 0.999389
+    },
+    "ra_best": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.05514,
+      "pos_at_0.5": 283,
+      "min": 3.2e-05,
+      "max": 0.999154
+    },
+    "ra_last": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.051361,
+      "pos_at_0.5": 270,
+      "min": 1.7e-05,
+      "max": 0.999683
+    },
+    "swin_pair": {
+      "rows": 5855,
+      "official_order": true,
+      "nan": 0,
+      "out_of_range": 0,
+      "mean": 0.060106,
+      "pos_at_0.5": 312,
+      "min": 0.000135,
+      "max": 0.999838
+    }
+  },
+  "pairwise": {
+    "seed7 vs seed42": {
+      "spearman": 0.886783,
+      "top200": 191,
+      "max_absdiff": 0.435429
+    },
+    "seed7 vs seed123": {
+      "spearman": 0.899618,
+      "top200": 190,
+      "max_absdiff": 0.512256
+    },
+    "seed7 vs avg2": {
+      "spearman": 0.96986,
+      "top200": 196,
+      "max_absdiff": 0.255224
+    },
+    "seed7 vs avg3": {
+      "spearman": 0.961492,
+      "top200": 195,
+      "max_absdiff": 0.351699
+    },
+    "seed42 vs seed123": {
+      "spearman": 0.888747,
+      "top200": 186,
+      "max_absdiff": 0.415543
+    },
+    "seed42 vs avg2": {
+      "spearman": 0.97051,
+      "top200": 195,
+      "max_absdiff": 0.253641
+    },
+    "seed42 vs avg3": {
+      "spearman": 0.957483,
+      "top200": 194,
+      "max_absdiff": 0.255675
+    },
+    "seed123 vs avg2": {
+      "spearman": 0.919325,
+      "top200": 190,
+      "max_absdiff": 0.453937
+    },
+    "seed123 vs avg3": {
+      "spearman": 0.966718,
+      "top200": 192,
+      "max_absdiff": 0.310092
+    },
+    "avg2 vs avg3": {
+      "spearman": 0.988626,
+      "top200": 198,
+      "max_absdiff": 0.143845
+    }
+  },
+  "blend_98_87_with_2seed_vs_3seed": {
+    "spearman": 0.999858,
+    "top200": 200,
+    "top200_changed": 0,
+    "max_absdiff": 0.030987,
+    "md5_2seed": "4bf37b7c062f7d45a9c5a8e287fff1eb",
+    "md5_3seed": "06aa5698e6c2fad3f76d42bc6df090aa",
+    "md5_2seed_matches_98_87": true
+  },
+  "hashes": {
+    "seed7": {
+      "file": "cnxb_512_e16_ra_all_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "cdfd7bbd1a4c478964a222bb0e7fc24952ecc5a21b34b95a6ceb3ccb7372cfe1",
+      "md5": "b89f39809899f42a89f49c6bde6f0664"
+    },
+    "seed42": {
+      "file": "cnxb_512_e16_ra_all_s42_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "fc367451831dd59fe853afb249d7c2538b8c3455c90f245288f3773542cd8184",
+      "md5": "85e6eb57c3e0ffa3ee7e79f66594a3f4"
+    },
+    "seed123": {
+      "file": "cnxb_512_e16_ra_all_s123_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "b36f8d104ca6c16b0fa9c98f2161dd7ab85ed349dc9ff05ba74a501609dea6d1",
+      "md5": "5e4a0f76a0bb1d8729d147d656a5851b"
+    },
+    "avg2": {
+      "file": "seed7_s42_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "c0aed73cdeb5365e8d77419e074e2e63fc33ec2b736677e8bc767b8aa79cedde",
+      "md5": "2658ddfe1376a929e2107ca8c13c42ca"
+    },
+    "avg3": {
+      "file": "seed7_s42_s123_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "1af99c3fe12eb93bfd98628752c17e629b223a9957172e1f4d4d49a9a29cf093",
+      "md5": "d30b6bc658bd43d7c2e337457bf89ee8"
+    },
+    "ens10": {
+      "file": "submission_20251018_ens10_cal.csv",
+      "bytes": 158120,
+      "sha256": "ec6e0f477492fcba8ae8b17fb0cac21ec6040cc3e2294abdd4f9411d2bd63787",
+      "md5": "ce91bbf48d6c8e05d7f67a43d902a5ae"
+    },
+    "ra_best": {
+      "file": "cnxb_512_e16_ra_test_best_tta4.csv",
+      "bytes": 158120,
+      "sha256": "3e639109a6d4e658bb8e123ab061d8d45ba9b8737461db19407071483ebaeafc",
+      "md5": "6f8c7308afa7076b7397f52e61b07b82"
+    },
+    "ra_last": {
+      "file": "cnxb_512_e16_ra_test_last_tta4.csv",
+      "bytes": 158120,
+      "sha256": "e7000f5db24a83e344da58b0ad1e67860fbce4283b99fb1707969e42ccb45b57",
+      "md5": "692c6e7b483784d7a55cf04d98b90c95"
+    },
+    "swin_pair": {
+      "file": "swin_pair_test_tta4.csv",
+      "bytes": 158120,
+      "sha256": "4d15c48af56cd92252819ab1c9335fbf8648c8799c6190d19e019aad6f3129d9",
+      "md5": "0825072672651298f36e3e7991ab60ad"
+    }
+  },
+  "not_verified": {
+    "check_train_on_all": "需要 runs/cnxb_512_e16_ra/last.pt + cache_all768（GPU/数十 GB），本机未执行；上方 pairwise 为其 CPU 替代口径（Spearman/top200/mean 漂移）",
+    "valid_auroc": "train+all 无干净 valid，按工单不报"
+  }
+}
