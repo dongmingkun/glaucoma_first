@@ -6,13 +6,16 @@ imbalance via pos_weight BCE. AMP fp16, EMA, cosine LR with warmup.
 Usage examples:
   python train.py --arch efficientnet_b3 --img-size 384 --epochs 10 --batch-size 32
   python train.py --arch efficientnet_b4 --img-size 448 --epochs 8 --batch-size 24 --accum 2
-  python train.py --arch efficientnet_b3 --img-size 384 --epochs 4 --train-on-all --resume-from runs/xxx/best.pt
+  python train.py --arch efficientnet_b3 --img-size 384 --epochs 4 --train-on-all --init-from runs/xxx/best.pt
+  python train.py ... --save-every-steps 200                       # 每 200 步落盘 resume.pt
+  python train.py ... --resume-from runs/xxx/resume.pt            # 断点续跑（--epochs 保持不变）
 """
 import argparse
 import csv
 import math
 import os
 import random
+import signal
 import sys
 import time
 from datetime import datetime
@@ -467,6 +470,10 @@ def main():
                     help="use ImageNet pretrained backbone (0 = train from scratch)")
     ap.add_argument("--subset", type=int, default=0, help="train on random subset (smoke test)")
     ap.add_argument("--max-steps-per-epoch", type=int, default=0)
+    ap.add_argument("--resume-from", default=None,
+                    help="从 resume.pt 续跑（恢复模型/EMA/优化器/global_step；--epochs 保持不变）")
+    ap.add_argument("--save-every-steps", type=int, default=0,
+                    help="每 N 个优化步原子落盘 resume.pt（0=只在 epoch 末落盘）")
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--ema-decay", type=float, default=0.999)
     ap.add_argument("--train-on-all", action="store_true", help="add valid into train, no val split (final model)")
@@ -616,18 +623,86 @@ def main():
         return 0.01 + 0.99 * 0.5 * (1 + math.cos(math.pi * p))
 
     log_path = os.path.join(exp, "log.csv")
-    with open(log_path, "w", newline="", encoding="utf-8") as f:
-        csv.writer(f).writerow(["epoch", "train_loss", "val_loss", "auroc", "auprc", "val_auroc_ema", "val_auprc_ema", "lr", "sec"])
+    resume_ckpt = None
+    if args.resume_from:
+        if not os.path.exists(args.resume_from):
+            raise FileNotFoundError(f"--resume-from {args.resume_from} not found")
+        resume_ckpt = torch.load(args.resume_from, map_location="cpu", weights_only=False)
+    log_mode = "a" if (resume_ckpt is not None and os.path.exists(log_path)) else "w"
+    with open(log_path, log_mode, newline="", encoding="utf-8") as f:
+        if log_mode == "w":
+            csv.writer(f).writerow(["epoch", "train_loss", "val_loss", "auroc", "auprc", "val_auroc_ema", "val_auprc_ema", "lr", "sec"])
 
     global_step = 0
     best_auroc = -1.0
-    for epoch in range(1, args.epochs + 1):
+    start_epoch = 1
+    skip_batches = 0
+    if resume_ckpt is not None:
+        model.load_state_dict(resume_ckpt["model"])
+        ema.ema = {k: v.to(device) for k, v in resume_ckpt["ema"].items()}
+        ema.n = resume_ckpt.get("ema_n", 0)
+        if "opt" in resume_ckpt:
+            opt.load_state_dict(resume_ckpt["opt"])
+            for st in opt.state.values():   # AdamW 的动量必须搬到 GPU，否则 step 报 device 不匹配
+                for k, v in st.items():
+                    if torch.is_tensor(v):
+                        st[k] = v.to(device)
+        if "scaler" in resume_ckpt:
+            scaler.load_state_dict(resume_ckpt["scaler"])
+        global_step = resume_ckpt.get("global_step", 0)
+        start_epoch = resume_ckpt.get("epoch_done", 0) + 1
+        skip_batches = resume_ckpt.get("it_done", 0)
+        best_auroc = resume_ckpt.get("best_auroc", -1.0)
+        print(f"[resume] {args.resume_from}: 已完成 {start_epoch - 1}/{args.epochs} epoch，"
+              f"epoch {start_epoch} 跳过 {skip_batches} 个 batch，global_step={global_step}",
+              flush=True)
+        if start_epoch > args.epochs:
+            print(f"[resume] 已经跑满 {args.epochs} epoch，无需续跑；last.pt 即最终权重")
+            return
+
+    # 只记录"已完成的 epoch + 本 epoch 已消费的 micro-batch 数"，恢复时据此跳过；
+    # global_step 与 LR schedule 由它唯一决定，保证 cosine 不会错位（错位会让 LR 反升）。
+    prog = {"epoch_done": start_epoch - 1, "it_done": skip_batches}
+
+    def save_resume():
+        """原子写 resume.pt：timeout/SIGTERM 打断也不会留下半个文件。"""
+        ck = {"model": model.state_dict(), "ema": ema.ema, "ema_n": ema.n,
+              "opt": opt.state_dict(), "scaler": scaler.state_dict(),
+              "global_step": global_step, "epoch_done": prog["epoch_done"],
+              "it_done": prog["it_done"], "best_auroc": best_auroc,
+              "arch": args.arch, "img_size": args.img_size,
+              "train_on_all": args.train_on_all, "args": vars(args)}
+        tmp = os.path.join(exp, "resume.tmp")
+        torch.save(ck, tmp)
+        os.replace(tmp, os.path.join(exp, "resume.pt"))
+
+    if args.resume_from is None and args.save_every_steps:
+        save_resume()   # 一开始就落盘，避免第一个 epoch 内挂掉后无从续跑
+
+    def _on_term(signum, frame):
+        try:
+            save_resume()
+            print(f"[signal {signum}] resume.pt saved @ epoch {prog['epoch_done'] + 1} "
+                  f"batch {prog['it_done']} step {global_step}", flush=True)
+        except Exception as e:  # 保存失败也要退出，不能卡住会话
+            print(f"[signal {signum}] save failed: {e}", flush=True)
+        os._exit(143)
+
+    signal.signal(signal.SIGTERM, _on_term)
+    signal.signal(signal.SIGINT, _on_term)
+
+    for epoch in range(start_epoch, args.epochs + 1):
+        prog["epoch_done"] = epoch - 1
+        prog["it_done"] = 0
+        skip_n = skip_batches if epoch == start_epoch else 0
         t0 = time.time()
         model.train()
         run_loss, nseen, micro = 0.0, 0, 0
         for it, (x, age, y) in enumerate(dl_tr):
             if args.max_steps_per_epoch and it >= args.max_steps_per_epoch * args.accum:
                 break
+            if it < skip_n:      # 续跑：本 epoch 已经消费过的 batch，跳过不重复训练
+                continue
             step = global_step
             fac = lr_at(step)
             for g, b in zip(opt.param_groups, base_lrs):
@@ -660,6 +735,9 @@ def main():
                 opt.zero_grad(set_to_none=True)
                 ema.update(model, steps=1)
                 global_step += 1
+                prog["it_done"] = it + 1
+                if args.save_every_steps and global_step % args.save_every_steps == 0:
+                    save_resume()
             if (it + 1) % 50 == 0:
                 mem = torch.cuda.max_memory_allocated() / 2**30
                 print(f"  ep{epoch} it{it+1}/{len(dl_tr)} loss={run_loss/max(1,nseen):.4f} "
@@ -685,6 +763,8 @@ def main():
                                         round(lr_now, 8), round(sec, 1)])
             print(f"epoch {epoch}: train_loss={train_loss:.4f} lr={lr_now:.2e} ({sec:.0f}s) "
                   f"commit={proc_commit_mb():.0f}MB -> last.pt + best.pt (train-on-all, no val)", flush=True)
+            prog["epoch_done"], prog["it_done"] = epoch, 0
+            save_resume()
             continue
 
         auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit)
@@ -709,6 +789,8 @@ def main():
             best_auroc = key
             torch.save(ckpt, os.path.join(exp, "best.pt"))
             print(f"  new best ({args.select_metric}): {best_auroc:.4f} -> best.pt", flush=True)
+        prog["epoch_done"], prog["it_done"] = epoch, 0
+        save_resume()
 
     if args.train_on_all:
         print(f"done. train-on-all {args.epochs} epochs -> {exp}")

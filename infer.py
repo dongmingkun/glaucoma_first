@@ -70,6 +70,9 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--use", default="auto", choices=["auto", "ema", "model"])
+    ap.add_argument("--cache-root", default=None,
+                    help="覆盖 ckpt 里记录的缓存路径（换机器/数据集版本变化时必须显式指定）")
+    ap.add_argument("--csv-root", default=None, help="覆盖存放 train/valid/test.csv 的目录")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -86,7 +89,7 @@ def main():
             a_ema = ckpt.get("auroc_ema", -1)
             a_mod = ckpt.get("auroc", -1)
             use = "ema" if a_ema >= a_mod else "model"
-    cache_root = (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
+    cache_root = args.cache_root or (ckpt.get("args") or {}).get("cache_root") or CACHE_ROOT
     print(f"ckpt={args.ckpt} arch={arch} img={img_size} use={use} cache={cache_root} "
           f"(auroc_ema={ckpt.get('auroc_ema')} auroc={ckpt.get('auroc')})")
     if ckpt.get("train_on_all") and args.split in ("train", "valid"):
@@ -97,7 +100,7 @@ def main():
     sd = ckpt["ema"] if use == "ema" else ckpt["model"]
     model.load_state_dict({k: v for k, v in sd.items()}, strict=True)
 
-    rows = load_rows(args.split)
+    rows = load_rows(args.split, csv_root=args.csv_root)
     flips = {1: [0], 2: [0, 1], 4: [0, 1, 2, 3]}[args.tta]
     scales = args.img_sizes or [img_size]
     probs = np.zeros(len(rows), dtype=np.float64)
@@ -120,7 +123,7 @@ def main():
 
     if args.out:
         names = []
-        with open(os.path.join(CSV_ROOT, args.split + ".csv"), "r", encoding="utf-8-sig", newline="") as f:
+        with open(os.path.join(args.csv_root or CSV_ROOT, args.split + ".csv"), "r", encoding="utf-8-sig", newline="") as f:
             for r in csv.DictReader(f):
                 names.append(r["Image_name"])
         assert len(names) == len(probs)
