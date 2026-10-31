@@ -1,0 +1,82 @@
+{
+  "csv": "C:\\Users\\Shu\\WorkBuddy\\2026-10-15-15-33-39\\issue118b\\issue193\\repo193\\cnxl_384_e16_ra_all_s7_test_tta4.csv",
+  "bytes": 158120,
+  "sha256": "7169871037cda31b2a87459d5237d944d913b253e0f2986bde81243dfc804af8",
+  "md5": "122f9eb31beb6797896cb93b1b68b8af",
+  "mean_prob": 0.043301,
+  "pos_rate": 0.042186,
+  "checks": [
+    {
+      "check": "rows_5855",
+      "pass": true,
+      "detail": "5855 行"
+    },
+    {
+      "check": "header_3cols",
+      "pass": true,
+      "detail": "['Image_name', 'Probability', 'Pred_Label']"
+    },
+    {
+      "check": "official_order",
+      "pass": true,
+      "detail": "与 test.csv 逐行一致"
+    },
+    {
+      "check": "unique_names",
+      "pass": true,
+      "detail": "5855 个唯一名"
+    },
+    {
+      "check": "all_finite",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "prob_in_0_1",
+      "pass": true,
+      "detail": "min=0.000000 max=0.998341"
+    },
+    {
+      "check": "label_matches_prob",
+      "pass": true,
+      "detail": "符号不一致 0 行"
+    },
+    {
+      "check": "crlf",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "check": "no_bom",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "refs": [
+    {
+      "name": "v98_87",
+      "path": "docs/audit_98_87/FINAL_REPRO_98_87.csv",
+      "status": "ok",
+      "spearman": 0.64403,
+      "top200": 178,
+      "max_abs_diff": 0.952216
+    },
+    {
+      "name": "seed123_cnxl384",
+      "path": "oof/cnxl_384_e16_ra_all_s123_test_tta4.csv",
+      "status": "ok",
+      "spearman": 0.677591,
+      "top200": 177,
+      "max_abs_diff": 0.827331
+    },
+    {
+      "name": "seed123_cnxb512",
+      "path": "cnxb_512_e16_ra_all_s123_test_tta4.csv",
+      "status": "ok",
+      "spearman": 0.64707,
+      "top200": 180,
+      "max_abs_diff": 0.863664
+    }
+  ],
+  "verdict": "PASS"
+}
