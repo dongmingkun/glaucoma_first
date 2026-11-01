@@ -1,2 +1,5 @@
 # 审计产物按原字节保存：98.87 复现件的 md5 依赖 CRLF，不能被 autocrlf 归一化
 docs/audit_98_87/*.csv -text
+
+# #193 交付件同理：SHA256 716987… 是对 CRLF 原件的指纹
+cnxl_384_e16_ra_all_s7_test_tta4.csv -text
