@@ -16,14 +16,23 @@ import signal
 import subprocess
 import sys
 import time
+import traceback
 
 WORK = "/kaggle/working"
-REPO = os.path.join(WORK, "glaucoma_first")
+REPO = "/tmp/glaucoma_first"
 BRANCH = "main"
 RUN = os.path.join(WORK, "runs", "cnxv2b_512_e16_ra")
 TAG = "cnxv2b_512_e16_ra"
 TRAIN_BUDGET = int(float(os.environ.get("TRAIN_BUDGET_H", "10.8")) * 3600)
 GATE1 = 0.9920
+
+
+def _tee_all_output():
+    """所有 runner/subprocess 输出同步写入 WORK/runner.log（崩溃日志随 kernel output 带回）。"""
+    logf = open(os.path.join(WORK, "runner.log"), "a", buffering=1)
+    os.dup2(logf.fileno(), 1)
+    os.dup2(logf.fileno(), 2)
+    print(f"[runner] logging tee -> {logf.name}", flush=True)
 
 
 def sh(cmd, **kw):
@@ -231,4 +240,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    _tee_all_output()
+    try:
+        main()
+    except BaseException:
+        traceback.print_exc()
+        print("[runner] FATAL — traceback 已写入上方与本文件", flush=True)
+        raise
