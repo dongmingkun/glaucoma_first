@@ -49,7 +49,7 @@ def reconstruct_from_cache_all():
     cands += sorted(glob.glob("/kaggle/input/*/cache_all"))
     cands += sorted(glob.glob("/kaggle/input/*/*/cache_all"))
     src = None
-    for c in cands:
+    for c in find_input_dirs("cache_all"):
         if (os.path.isdir(os.path.join(c, "train")) and os.path.isdir(os.path.join(c, "test"))
                 and len(os.listdir(os.path.join(c, "train"))) == 57245):
             src = c
@@ -95,14 +95,25 @@ def reconstruct_from_cache_all():
     return None
 
 
+def find_input_dirs(name):
+    """在 /kaggle/input 下递归找名为 name 的目录（兼容新旧挂载布局：
+    /kaggle/input/<slug>/ 与 /kaggle/input/datasets/<owner>/<slug>/）。"""
+    hits = []
+    for root, dirs, files in os.walk("/kaggle/input"):
+        if root.count(os.sep) - "/kaggle/input".count(os.sep) > 5:
+            dirs[:] = []
+            continue
+        if os.path.basename(root) == name and os.path.isdir(root):
+            hits.append(root)
+            dirs[:] = []          # 不再深入 cache 目录内部（10 万+ 文件）
+            continue
+    return hits
+
+
 def find_cache512():
     """阶段 1 必须 train/valid 分离（51396/5849）——cache_all 的 57245 混合目录会造成 valid 泄漏。"""
-    cands = ["/kaggle/input/glaucoma/cache512"]
-    cands += sorted(glob.glob("/kaggle/input/*/cache512"))
-    cands += sorted(glob.glob("/kaggle/input/*/*/cache512"))
-    cands += sorted(glob.glob("/kaggle/input/*/datasets/*/cache512"))
-    for c in cands:
-        if (os.path.isdir(os.path.join(c, "train")) and os.path.isdir(os.path.join(c, "valid"))):
+    for c in find_input_dirs("cache512"):
+        if os.path.isdir(os.path.join(c, "train")) and os.path.isdir(os.path.join(c, "valid")):
             n_tr = len(os.listdir(os.path.join(c, "train")))
             n_va = len(os.listdir(os.path.join(c, "valid")))
             if n_tr == 51396 and n_va == 5849:
