@@ -1,0 +1,13 @@
+{
+  "id": "<OWNER>/g199-cnxv2b512-stage1",
+  "title": "g199 cnxv2b512 stage1",
+  "code_file": "run.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["linglingyusc/glaucoma"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
