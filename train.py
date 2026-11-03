@@ -420,15 +420,23 @@ def proc_commit_mb():
 
 
 @torch.no_grad()
-def evaluate(model, loader, device, crit):
+def evaluate(model, loader, device, crit, tta=1):
+    """tta=1/2/4: average sigmoid over identity + flip variants (hflip/vflip)."""
     model.eval()
+    flips = {1: [], 2: [3], 4: [3, 2, (2, 3)]}[tta]
     probs, labels, losses = [], [], []
     for x, age, y in loader:
         x, age, y = x.to(device, non_blocking=True), age.to(device, non_blocking=True), y.to(device, non_blocking=True)
         with torch.amp.autocast("cuda", dtype=torch.float16):
-            logits = model(x, age)
-            loss = crit(logits.float(), y)
-        probs.append(torch.sigmoid(logits.float()).cpu())
+            acc = None
+            for dims in [None] + flips:
+                xx = x if dims is None else torch.flip(x, dims=[dims] if isinstance(dims, int) else list(dims))
+                logits = model(xx, age)
+                p = torch.sigmoid(logits.float())
+                acc = p if acc is None else acc + p
+                if dims is None:
+                    loss = crit(logits.float(), y)
+        probs.append((acc / (len(flips) + 1)).cpu())
         labels.append(y.cpu())
         losses.append(loss.item() * len(y))
     probs = torch.cat(probs).numpy()
@@ -482,6 +490,8 @@ def main():
                     help="CSV(Image_name,Age,Label) 追加到训练集（伪标签/测试域自训练）；valid 仍保留用于评估")
     ap.add_argument("--select-metric", default="blend", choices=["auroc", "blend", "auprc"],
                     help="checkpoint 选择标准: auroc | blend=0.5*(auroc+auprc) | auprc")
+    ap.add_argument("--validation-tta", type=int, default=1, choices=[1, 2, 4],
+                    help="每 epoch valid 评估的翻转 TTA 数（1/2/4；与 infer.py --tta 同口径）")
     ap.add_argument("--tag", default="")
     ap.add_argument("--cache-root", default=None, help="override 512px cache dir (default: auto-detect)")
     ap.add_argument("--csv-root", default=None, help="override folder with train/valid/test.csv")
@@ -560,6 +570,7 @@ def main():
     # train-on-all: valid is inside the training set, so no val loader at all.
     # Skipping it also avoids paying the ~1.25GB/worker commit charge we can't afford.
     if not args.train_on_all:
+        print(f"validation TTA = {args.validation_tta} (1/2/4 flips)")
         ds_va = FundusDS("valid", val_rows, args.img_size, train=False)
         if args.loader == "threads":
             dl_va = ThreadLoader(ds_va, max(32, args.batch_size), nthreads=args.threads, qsize=96,
@@ -767,9 +778,9 @@ def main():
             save_resume()
             continue
 
-        auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit)
+        auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit, tta=args.validation_tta)
         backup = ema.apply_to(model)
-        auroc_e, auprc_e, vloss_e, _, _, balmax_e = evaluate(model, dl_va, device, crit)
+        auroc_e, auprc_e, vloss_e, _, _, balmax_e = evaluate(model, dl_va, device, crit, tta=args.validation_tta)
         model.load_state_dict(backup)
         lr_now = opt.param_groups[0]["lr"]
         print(f"epoch {epoch}: train={train_loss:.4f} val={vloss:.4f} AUROC={auroc:.4f} AUPRC={auprc:.4f} "
