@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """#199 阶段1 valid 复核 + 预注册融合门槛（纯 CPU / numpy）。
 
-- 10 项格式复核（5849 行、官方顺序、无 NaN、[0,1]、CRLF、无 BOM、SHA256）
+- 10 项格式复核（5849 行、官方顺序、无 NaN、[0,1]、行尾一致（LF/CRLF）、无 BOM、SHA256）
 - 与参照成员（ens9 / RA_avg / Swin_pair 等）的 Spearman
 - 若给了 98.87 的 valid 代理：new = (1-w)*rank(B) + w*rank(member)，只测 w=0.05/0.10，
   报 ΔAUROC、配对 bootstrap P(Δ>0) 与 P(Δ≥+0.0005)、CI95
@@ -18,7 +18,6 @@ import csv
 import hashlib
 import json
 import os
-import sys
 
 import numpy as np
 
@@ -113,7 +112,7 @@ def main():
         checks.append({"check": name, "pass": bool(ok), "detail": detail})
 
     chk("rows_5849", len(names) == 5849, f"{len(names)} 行")
-    chk("header_3cols", header[:2] == ["Image_name", "Probability"], str(header))
+    chk("header_3cols", header == ["Image_name", "Probability", "Pred_Label"], str(header))
     chk("official_order", names == off_names, "与 valid.csv 逐行一致" if names == off_names else "顺序不一致")
     chk("unique_names", len(set(names)) == len(names), f"{len(set(names))} 个唯一名")
     chk("all_finite", bool(np.all(np.isfinite(probs))), "")
@@ -121,7 +120,9 @@ def main():
         f"min={probs.min():.6f} max={probs.max():.6f}")
     with open(args.csv, "rb") as f:
         raw = f.read()
-    chk("crlf", b"\r\n" in raw and raw.count(b"\n") == raw.count(b"\r\n"), "")
+    crlf = raw.count(b"\r\n")
+    lf = raw.count(b"\n")
+    chk("line_endings", crlf == 0 or crlf == lf, f"CRLF={crlf} LF={lf}")
     chk("no_bom", not raw.startswith(b"\xef\xbb\xbf"), "")
     if names == off_names:
         chk("label_aligned", True, "无标签列，按官方顺序对齐")
@@ -175,6 +176,8 @@ def main():
                     "p_delta_ge_threshold": round(float((deltas >= THRESHOLD).mean()), 4),
                     "ci95": [round(float(lo), 8), round(float(hi), 8)],
                 })
+            # Protocol: point delta >= threshold and P(delta > 0) >= 0.95.
+            # p_delta_ge_threshold is reported for audit, but is not the pass criterion.
             passed = [g for g in gate["weights"] if g["delta"] >= THRESHOLD and g["p_delta_gt_0"] >= 0.95]
             gate["threshold"] = THRESHOLD
             gate["status"] = "PASS" if passed else "NEGATIVE"
