@@ -31,6 +31,61 @@ def sh(cmd, **kw):
     return subprocess.run(cmd, **kw)
 
 
+def reconstruct_from_cache_all():
+    """cache_all（train/valid 同为 57245 混合目录）按文件名前缀精确解出 cache512：
+    官方 train 图全部为 train_*.jpg（51396）、valid 图全部为 valid_*.jpg（5849）
+    （cache_all 由 cp -rs cache512/{train,valid} 合并而成，文件名保留原前缀）。
+    重建后逐项计数硬校验，任何一项不符即放弃。"""
+    cands = ["/kaggle/input/glaucoma/cache_all"]
+    cands += sorted(glob.glob("/kaggle/input/*/cache_all"))
+    cands += sorted(glob.glob("/kaggle/input/*/*/cache_all"))
+    src = None
+    for c in cands:
+        if (os.path.isdir(os.path.join(c, "train")) and os.path.isdir(os.path.join(c, "test"))
+                and len(os.listdir(os.path.join(c, "train"))) == 57245):
+            src = c
+            break
+    if not src:
+        return None
+    print(f"[cache] cache_all @ {src}（57245 混合）-> 按前缀解出 cache512", flush=True)
+    out = os.path.join(WORK, "cache512")
+    for sub in ("train", "valid", "test"):
+        os.makedirs(os.path.join(out, sub), exist_ok=True)
+    stats = {"train": 0, "valid": 0}
+    t_dir = os.path.join(src, "train")
+    for fn in os.listdir(t_dir):
+        stem, ext = os.path.splitext(fn)
+        sub = "train" if stem.startswith("train_") else ("valid" if stem.startswith("valid_") else None)
+        if sub is None:
+            print(f"[cache] WARN: 未识别前缀 {fn}，放弃重建", flush=True)
+            return None
+        link = os.path.join(out, sub, fn)
+        if not os.path.exists(link):
+            try:
+                os.symlink(os.path.join(t_dir, fn), link)
+            except OSError:
+                import shutil
+                shutil.copy2(os.path.join(t_dir, fn), link)
+        stats[sub] += 1
+    for fn in os.listdir(os.path.join(src, "test")):
+        link = os.path.join(out, "test", fn)
+        if not os.path.exists(link):
+            try:
+                os.symlink(os.path.join(src, "test", fn), link)
+            except OSError:
+                import shutil
+                shutil.copy2(os.path.join(src, "test", fn), link)
+    n_tr = len(os.listdir(os.path.join(out, "train")))
+    n_va = len(os.listdir(os.path.join(out, "valid")))
+    n_te = len(os.listdir(os.path.join(out, "test")))
+    print(f"[cache] 重建完成：train={n_tr} valid={n_va} test={n_te}（期望 51396/5849/5855，分拣 {stats}）",
+          flush=True)
+    if n_tr == 51396 and n_va == 5849 and n_te == 5855:
+        return out
+    print("[cache] ERROR: 重建计数不符，放弃", flush=True)
+    return None
+
+
 def find_cache512():
     """阶段 1 必须 train/valid 分离（51396/5849）——cache_all 的 57245 混合目录会造成 valid 泄漏。"""
     cands = ["/kaggle/input/glaucoma/cache512"]
@@ -94,7 +149,7 @@ def main():
 
     sh([sys.executable, "-m", "pip", "install", "-q", "timm", "scikit-learn"], check=True)
 
-    cache = find_cache512() or build_cache512()
+    cache = find_cache512() or reconstruct_from_cache_all() or build_cache512()
     if not cache:
         raise SystemExit("未找到/未能构建 train=51396+valid=5849 的 cache512；"
                          "/kaggle/input = %s" % glob.glob("/kaggle/input/*")[:10])
