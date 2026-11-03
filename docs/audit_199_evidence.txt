@@ -1,0 +1,44 @@
+#199 runner 日志关键节选（完整 3.4MB 见 Kaggle 内核 output v3）
+= = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+[cache] cache_all @ /kaggle/input/datasets/linglingyusc/glaucoma/cache_all（57245 混合）-> 按前缀解出 cache512
+[cache] 重建完成：train=51396 valid=5849 test=5855（期望 51396/5849/5855，分拣 {'train': 51396, 'valid': 5849}）
+TRAIN CMD: /usr/bin/python3 train.py --arch convnextv2_base --img-size 512 --cache-root /kaggle/working/cache512 --epochs 16 --batch-size 8 --accum 6 --lr 1e-4 --head-lr 5e-4 --randaugment 2 9 --pretrained 1 --seed 42 --loader workers --workers 4 --validation-tta 4 --save-every-steps 200 --tag cnxv2b_512_e16_ra --out-dir /kaggle/working/runs/cnxv2b_512_e16_ra
+train rows=51396 pos=1657 (0.0322)
+validation TTA = 4 (1/2/4 flips)
+--- epoch 边界 ---
+epoch 1: train=0.5053 val=0.5895 AUROC=0.6111 AUPRC=0.0633 balmax=0.6257 | EMA AUROC=0.7027 AUPRC=0.0761 balmax=0.6682 (7448s) commit=-1MB
+epoch 2: train=0.4680 val=0.4340 AUROC=0.7034 AUPRC=0.0736 balmax=0.6601 | EMA AUROC=0.3666 AUPRC=0.0251 balmax=0.5047 (7302s) commit=-1MB
+--- NaN 起点 ---
+ep3 it5900/6424 loss=0.4549 lr=9.53e-05 vram=11.3G 5310s
+ep3 it5950/6424 loss=0.4547 lr=9.53e-05 vram=11.3G 5355s
+ep3 it6000/6424 loss=nan lr=9.53e-05 vram=11.3G 5398s
+ep3 it6050/6424 loss=nan lr=9.52e-05 vram=11.3G 5442s
+--- traceback ---
+Traceback (most recent call last):
+  File "/tmp/glaucoma_first/train.py", line 867, in <module>
+    main()
+    ~~~~^^
+  File "/tmp/glaucoma_first/train.py", line 781, in main
+    auroc, auprc, vloss, _, _, balmax = evaluate(model, dl_va, device, crit, tta=args.validation_tta)
+                                        ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.13/dist-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/tmp/glaucoma_first/train.py", line 444, in evaluate
+    auroc = roc_auc_score(labels, probs)
+  File "/usr/local/lib/python3.13/dist-packages/sklearn/utils/_param_validation.py", line 216, in wrapper
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.13/dist-packages/sklearn/metrics/_ranking.py", line 620, in roc_auc_score
+    y_score = check_array(y_score, ensure_2d=False)
+  File "/usr/local/lib/python3.13/dist-packages/sklearn/utils/validation.py", line 1107, in check_array
+    _assert_all_finite(
+    ~~~~~~~~~~~~~~~~~~^
+        array,
+        ^^^^^^
+    ...<2 lines>...
+        allow_nan=ensure_all_finite == "allow-nan",
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/usr/local/lib/python3.13/dist-packages/sklearn/utils/validation.py", line 120, in _assert_all_finite
+    _assert_all_finite_element_wise(
+    ~~~~~~~~~~~~~~

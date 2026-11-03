@@ -1,0 +1,5 @@
+{
+ "gate1_auroc": 0.36706400981605997,
+ "threshold": 0.992,
+ "pass": false
+}
