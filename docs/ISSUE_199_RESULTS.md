@@ -10,7 +10,7 @@
 
 | 项 | 值 |
 |---|---|
-| 命令 | 工单原文命令逐字（`--arch convnextv2_base --img-size 512 --cache-root cache512 --epochs 16 --batch-size 8 --accum 6 --lr 1e-4 --head-lr 5e-4 --randaugment 2 9 --pretrained 1 --seed 42 --validation-tta 4 --save-every-steps 200`） |
+| 命令 | 模型超参按工单（`--arch convnextv2_base --img-size 512 --epochs 16 --batch-size 8 --accum 6 --lr 1e-4 --head-lr 5e-4 --randaugment 2 9 --pretrained 1 --seed 42 --validation-tta 4 --save-every-steps 200`）；runner 因 T4 使用 `--loader workers --workers 4`，cache 为重建路径 `/kaggle/working/cache512` |
 | 平台 | Kaggle script kernel `g199-cnxv2b512-stage1` v3，Tesla T4×2（单卡训练），runner `tools/kaggle_199_runner.py`（PR #203） |
 | 数据 | 用户数据集 `linglingyusc/glaucoma` 的 cache_all（57245）按官方文件名前缀精确重建 cache512（51396/5849/5855 计数硬校验通过；train/valid 图像与 #193 成功交付所用同一数据集） |
 | 耗时 | 01:07 → 07:09 ≈ 6h02m（训练 5.92h 后 exit=1） |
@@ -54,8 +54,9 @@ ep3 末 evaluate() 遇 NaN 概率崩溃退出（exit=1，traceback 见 evidence 
 ## 交付物（本 PR）
 
 - `docs/ISSUE_199_RESULTS.md`（本文件）；
-- `log.csv`（2 个 epoch 的完整曲线）+ `gate1.json`（无效产物标记）；
-- `docs/audit_199/runner_evidence.log`（runner 日志关键节选：cache 重建校验、NaN 起点、traceback）；
+- `cnxv2b_512_e16_ra_log.csv`（2 个 epoch 的完整曲线）+ `cnxv2b_512_e16_ra_gate1.json`（无效产物标记）；
+- `docs/audit_199_evidence.txt`（runner 日志关键节选：cache 重建校验、NaN 起点、traceback）；
+- runner 代码不在本 PR；以 #203 合并版 `tools/kaggle_199_runner.py` 为准。
 - 完整 runner.log（3.4MB）在 Kaggle 内核 output：`linglingyusc/g199-cnxv2b512-stage1` v3。
 
 ## 成本
