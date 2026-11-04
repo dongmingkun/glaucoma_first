@@ -9,6 +9,7 @@ Kaggle script kernel（GPU + internet）跑 #199 阶段 1：
   2) 原始图 glaucoma_first/{train,valid}（在 Kaggle 上现 build cache512，约 1-2h）
 预算：默认 10.8h 训练预算，超时 SIGTERM -> train.py 落 resume.pt（#193 已验证的续传协议）。
 """
+import csv
 import glob
 import json
 import os
@@ -126,11 +127,10 @@ def find_cache512():
 def build_cache512():
     """原始图兜底：用仓库 preprocess.py 现建 cache512（--data-root 指向挂载的原始图）。"""
     raw = None
-    for pat in ("/kaggle/input/*/glaucoma_first", "/kaggle/input/glaucoma_first"):
-        for d in glob.glob(pat):
-            if os.path.isdir(os.path.join(d, "train")) and os.path.isdir(os.path.join(d, "valid")):
-                raw = d
-                break
+    for d in find_input_dirs("glaucoma_first"):
+        if os.path.isdir(os.path.join(d, "train")) and os.path.isdir(os.path.join(d, "valid")):
+            raw = d
+            break
     if not raw:
         return None
     print(f"[cache] 原始图 {raw} -> 现建 cache512（约 1-2h）", flush=True)
@@ -142,17 +142,67 @@ def build_cache512():
     return out if len(os.listdir(os.path.join(out, "train"))) == 51396 else None
 
 
-def find_resume():
+def _resume_matches(path, cache):
+    """Only resume the exact stage-1 run; never pick another arch/seed/tag/train-on-all."""
+    if TAG not in path:
+        return False
+    try:
+        import torch
+        ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        a = ckpt.get("args") or {}
+    except Exception as exc:
+        print(f"[resume] skip {path}: unreadable ({exc})", flush=True)
+        return False
+    expected = {
+        "arch": "convnextv2_base",
+        "img_size": 512,
+        "seed": 42,
+        "tag": TAG,
+        "epochs": 16,
+        "validation_tta": 4,
+        "randaugment": [2, 9],
+        "train_on_all": False,
+    }
+    bad = {k: (a.get(k), v) for k, v in expected.items() if a.get(k) != v}
+    if a.get("cache_root") != cache:
+        bad["cache_root"] = (a.get("cache_root"), cache)
+    if bad:
+        print(f"[resume] skip {path}: mismatched {bad}", flush=True)
+        return False
+    print(f"[resume] accept {path}: epoch={ckpt.get('epoch')} next_epoch={ckpt.get('next_epoch')}",
+          flush=True)
+    return True
+
+
+def find_resume(cache):
     local = os.path.join(RUN, "resume.pt")
-    if os.path.isfile(local):
-        return local
+    candidates = [local] if os.path.isfile(local) else []
     for root, dirs, files in os.walk("/kaggle/input"):
-        if root.count(os.sep) - "/kaggle/input".count(os.sep) > 3:
+        if root.count(os.sep) - "/kaggle/input".count(os.sep) > 6:
             dirs[:] = []
             continue
         if "resume.pt" in files:
-            return os.path.join(root, "resume.pt")
+            candidates.append(os.path.join(root, "resume.pt"))
+    seen = set()
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
+        if os.path.isfile(path) and _resume_matches(path, cache):
+            return path
     return None
+
+
+def completed_epochs():
+    log = os.path.join(RUN, "log.csv")
+    if not os.path.isfile(log):
+        return 0
+    try:
+        with open(log, encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+        return max(int(r["epoch"]) for r in rows if r.get("epoch"))
+    except Exception:
+        return 0
 
 
 def main():
@@ -175,8 +225,7 @@ def main():
                          "/kaggle/input = %s" % glob.glob("/kaggle/input/*")[:10])
     os.makedirs(RUN, exist_ok=True)
 
-    resume = find_resume()
-    extra = ["--resume-from", resume] if resume else []
+    resume = find_resume(cache)
     print("resume:", resume if resume else "none (fresh start)", flush=True)
 
     cmd = [
@@ -185,10 +234,15 @@ def main():
         "--cache-root", cache,
         "--epochs", "16", "--batch-size", "8", "--accum", "6",
         "--lr", "1e-4", "--head-lr", "5e-4", "--randaugment", "2", "9", "--pretrained", "1",
-        "--seed", "42", "--loader", "workers", "--workers", "4",
-        "--validation-tta", "4", "--save-every-steps", "200",
-        "--tag", TAG, "--out-dir", RUN,
-    ] + extra
+        "--seed", "42",
+    ]
+    # train.py only supports mid-epoch resume with the thread loader; workers + resume exits.
+    if resume:
+        cmd += ["--loader", "threads", "--threads", "4", "--resume-from", resume]
+    else:
+        cmd += ["--loader", "workers", "--workers", "4"]
+    cmd += ["--validation-tta", "4", "--save-every-steps", "200",
+            "--tag", TAG, "--out-dir", RUN]
     print("TRAIN CMD:", " ".join(cmd), flush=True)
 
     t0 = time.time()
@@ -212,35 +266,43 @@ def main():
         with open(os.path.join(WORK, "log.csv"), "w", encoding="utf-8") as f:
             f.write(content)
 
+    epochs_done = completed_epochs()
+    best = os.path.join(RUN, "best.pt")
     last = os.path.join(RUN, "last.pt")
+    gate_ckpt = best if os.path.isfile(best) else (last if os.path.isfile(last) else None)
     valid_csv = os.path.join(WORK, "cnxv2b_512_e16_ra_valid_tta4.csv")
     auroc = None
-    if os.path.isfile(last):
-        r = sh([sys.executable, "infer.py", "--ckpt", last, "--split", "valid", "--tta", "4",
+    if epochs_done < 16:
+        print(f"[gate1] SKIP: completed_epochs={epochs_done}/16; resume required", flush=True)
+    elif not gate_ckpt:
+        print("[runner] no best.pt/last.pt after 16 epochs; no valid product", flush=True)
+    else:
+        print(f"[gate1] checkpoint={gate_ckpt} (epochs={epochs_done})", flush=True)
+        r = sh([sys.executable, "infer.py", "--ckpt", gate_ckpt, "--split", "valid", "--tta", "4",
                 "--use", "ema", "--cache-root", cache, "--workers", "2", "--batch-size", "16",
                 "--out", valid_csv], cwd=REPO, check=False)
         if r.returncode == 0 and os.path.isfile(valid_csv):
-            import csv as _csv
             import numpy as np
             from sklearn.metrics import roc_auc_score
             lab = os.path.join(REPO, "glaucoma_first", "valid.csv")
-            names = [row["Image_name"] for row in _csv.DictReader(open(lab, encoding="utf-8-sig"))]
-            y = np.array([int(row["True_Label"]) for row in _csv.DictReader(open(lab, encoding="utf-8-sig"))])
+            names = [row["Image_name"] for row in csv.DictReader(open(lab, encoding="utf-8-sig"))]
+            y = np.array([int(row["True_Label"]) for row in csv.DictReader(open(lab, encoding="utf-8-sig"))])
             d = {row["Image_name"]: float(row["Probability"])
-                 for row in _csv.DictReader(open(valid_csv, encoding="utf-8-sig"))}
+                 for row in csv.DictReader(open(valid_csv, encoding="utf-8-sig"))}
             pr = np.array([d[n] for n in names])
             auroc = float(roc_auc_score(y, pr))
             g1 = "PASS" if auroc >= GATE1 else "FAIL"
             print(f"[gate1] valid TTA4(EMA) AUROC={auroc:.5f}  门槛>={GATE1}  ->  {g1}", flush=True)
-            json.dump({"gate1_auroc": auroc, "threshold": GATE1, "pass": auroc >= GATE1},
+            json.dump({"gate1_auroc": auroc, "threshold": GATE1, "pass": auroc >= GATE1,
+                       "epochs": epochs_done, "checkpoint": gate_ckpt},
                       open(os.path.join(WORK, "gate1.json"), "w"), indent=1)
             # 门槛脚本：复核 + Spearman（--proxy 缺席时如实标 MISSING_PROXY，供队长补）
             for ref in glob.glob("/kaggle/input/*/*valid*tta4*.csv")[:4]:
                 print("[ref-candidate]", ref, flush=True)
             sh([sys.executable, "tools/gate_199_valid.py", "--csv", valid_csv,
                 "--json", os.path.join(WORK, "gate_199.json")], cwd=REPO, check=False)
-    else:
-        print("[runner] no last.pt（训练中断且无 epoch 末落盘），本会话无 valid 产物", flush=True)
+        else:
+            print("[runner] valid inference failed; no gate1", flush=True)
 
     print("--- /kaggle/working ---", flush=True)
     for root, _, files in os.walk(WORK):
