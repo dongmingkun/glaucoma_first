@@ -1,0 +1,31 @@
+[{"stream_name":"stdout","time":9.425206869,"data":"torch: 2.11.0+cu130 cuda: Tesla T4\n"}
+,{"stream_name":"stdout","time":17.799183672,"data":"OK cb384.pt\n"}
+,{"stream_name":"stdout","time":24.92101673,"data":"OK cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":28.270299492,"data":"OK cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":28.788890124,"data":"images: /kaggle/input/datasets/linglingyusc/glaucoma/cache_all/test\n"}
+,{"stream_name":"stdout","time":37.216265107,"data":"model cb384.pt {'arch': 'convnext_base', 'img_size': 384, 'cache_size': 512, 'use': 'model'}\n"}
+,{"stream_name":"stdout","time":38.309170667,"data":"model cs_hi512_all.pt {'arch': 'convnext_small', 'img_size': 512, 'cache_size': 512, 'use': 'ema'}\n"}
+,{"stream_name":"stdout","time":39.280517146,"data":"model cs_hi512_all_ra.pt {'arch': 'convnext_small', 'img_size': 512, 'cache_size': 512, 'use': 'ema'}\n"}
+,{"stream_name":"stdout","time":57.470935869,"data":"round1 mean=120.74 p50=117.73 p95=145.45\n"}
+,{"stream_name":"stdout","time":65.928823555,"data":"round2 mean=84.54 p50=83.59 p95=94.54\n"}
+,{"stream_name":"stdout","time":74.389819216,"data":"round3 mean=84.56 p50=83.32 p95=94.79\n"}
+,{"stream_name":"stdout","time":74.391756983,"data":"F1: {'device': 'Tesla T4', 'torch': '2.11.0+cu130', 'protocol': 'batch=1 serial, 100 imgs x 3 rounds, per-image mean, excl. load/warmup', 'f1_round_mean_ms': [120.74, 84.54, 84.56], 'f1_mean_ms': 96.61, 'f1_p50_ms': 94.7, 'f1_p95_ms': 108.15, 'f1_max_ms': 147.63}\n"}
+,{"stream_name":"stdout","time":79.22726718,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":80.296729313,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":81.289274545,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":81.289305213,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":81.313776639,"data":"100 images to predict\n"}
+,{"stream_name":"stdout","time":81.313811755,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":89.913112492,"data":"  model convnext_base (cache512) done (9s elapsed)\n"}
+,{"stream_name":"stdout","time":89.913156007,"data":"  model convnext_small (cache512) done (9s elapsed)\n"}
+,{"stream_name":"stdout","time":89.913160247,"data":"  model convnext_small (cache512) done (9s elapsed)\n"}
+,{"stream_name":"stdout","time":89.913704518,"data":"wrote /kaggle/working/pred100.csv: 100 rows in 9s (pos_rate=2.00%)\n"}
+,{"stream_name":"stdout","time":94.676342129,"data":"F2: {'binary_mismatch': 0, 'pairwise_inversions': 0, 'rank_position_mismatch': 0, 'max_abs_diff': 5.000000000000013e-06, 'mean_abs_diff': 2.3999999999999717e-07}\n"}
+,{"stream_name":"stdout","time":94.676657699,"data":"DONE\n"}
+,{"stream_name":"stderr","time":98.068403945,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":98.06845004,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":98.342210028,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":98.342243285,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":99.217983622,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":100.308214597,"data":"[NbConvertApp] Writing 319198 bytes to __results__.html\n"}
+]
