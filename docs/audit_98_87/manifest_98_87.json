@@ -1,0 +1,369 @@
+{
+  "generated": "2026-11-10",
+  "repo": "github.com/dongmingkun/glaucoma_first",
+  "target": {
+    "lb_score": 98.87,
+    "lb_submission_id": 22205,
+    "csv_md5": "4bf37b7c062f7d45a9c5a8e287fff1eb",
+    "csv_sha256": "e4092e45518b95557d3256763de80f22b782978fbe4e155df543c85db556f8f7",
+    "rows": 5855,
+    "reproduce_command": "python tools/reproduce_98_87.py --check-md5 --out docs/audit_98_87/FINAL_REPRO_98_87.csv",
+    "verified_reproduced": true
+  },
+  "rank_definition": "rank 在 test 5855 内取 (rank-1)/(n-1)（0-based，并列取平均秩）；RA_avg=0.5*rank(best)+0.5*rank(last)（先 rank 再平均）；seedavg 使用 seed7_s42_test_tta4.csv（logit 空间平均，不是概率平均）",
+  "formula": [
+    {
+      "slot": "ens10",
+      "weight": 0.6,
+      "artifact": "submission_20251018_ens10_cal.csv"
+    },
+    {
+      "slot": "seedavg",
+      "weight": 0.1,
+      "artifact": "seed7_s42_test_tta4.csv"
+    },
+    {
+      "slot": "RA_avg",
+      "weight": 0.15,
+      "artifact": "0.5*rank(ra_best)+0.5*rank(ra_last)"
+    },
+    {
+      "slot": "Swin_pair",
+      "weight": 0.15,
+      "artifact": "swin_pair_test_tta4.csv"
+    }
+  ],
+  "ens10_note": "ens10 不是 10 成员集成；它是 ens9(4 模型)×0.80 + train+all 家族(2 模型)×0.20 后校准的产物，命名中的 10 是版本序号。仓库未保存 ens10 的逐成员构建脚本，权威字节件是 submission_20251018_ens10_cal.csv（md5 ce91bbf4…）。",
+  "csv_files": {
+    "ens10": {
+      "file": "submission_20251018_ens10_cal.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "ec6e0f477492fcba8ae8b17fb0cac21ec6040cc3e2294abdd4f9411d2bd63787",
+      "md5": "ce91bbf48d6c8e05d7f67a43d902a5ae",
+      "sha256_lf_normalized": "aa886d901a354345413356315e4de75c7ed17dbfce6bdf09e09ba7dade9a9b44",
+      "md5_lf_normalized": "7bed58a6a300a9c38245f48e5e5aed19",
+      "line_endings": "CRLF"
+    },
+    "seedavg": {
+      "file": "seed7_s42_test_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "c0aed73cdeb5365e8d77419e074e2e63fc33ec2b736677e8bc767b8aa79cedde",
+      "md5": "2658ddfe1376a929e2107ca8c13c42ca",
+      "sha256_lf_normalized": "9f9962b85056872a80f6968601e1da29e66b877d88209a1ae0862435987215a6",
+      "md5_lf_normalized": "3b1aa97fd5add2f9add3d9f998648cdc",
+      "line_endings": "CRLF"
+    },
+    "seed7": {
+      "file": "cnxb_512_e16_ra_all_test_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "cdfd7bbd1a4c478964a222bb0e7fc24952ecc5a21b34b95a6ceb3ccb7372cfe1",
+      "md5": "b89f39809899f42a89f49c6bde6f0664",
+      "sha256_lf_normalized": "3bea1c6e5dbf9e53dfb6b9009b75600aade480d9bb51057bb2884df2989e02f8",
+      "md5_lf_normalized": "c6fbf63687770608d1e86b2c247a1fc1",
+      "line_endings": "CRLF"
+    },
+    "seed42": {
+      "file": "cnxb_512_e16_ra_all_s42_test_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "fc367451831dd59fe853afb249d7c2538b8c3455c90f245288f3773542cd8184",
+      "md5": "85e6eb57c3e0ffa3ee7e79f66594a3f4",
+      "sha256_lf_normalized": "bd0ca82194bd2b267ca424dcd636be2cc6dd87a1bea286ba201d6bc20e4810a6",
+      "md5_lf_normalized": "25a109d85094916a373a19ffb6027c09",
+      "line_endings": "CRLF"
+    },
+    "ra_best": {
+      "file": "cnxb_512_e16_ra_test_best_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "3e639109a6d4e658bb8e123ab061d8d45ba9b8737461db19407071483ebaeafc",
+      "md5": "6f8c7308afa7076b7397f52e61b07b82",
+      "sha256_lf_normalized": "f434008b0b1bac3e3cc35b965147616a19b23f82647181833787636e1e99af58",
+      "md5_lf_normalized": "077d600f9c0f392be7f3afe22da1cbdf",
+      "line_endings": "CRLF"
+    },
+    "ra_last": {
+      "file": "cnxb_512_e16_ra_test_last_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "e7000f5db24a83e344da58b0ad1e67860fbce4283b99fb1707969e42ccb45b57",
+      "md5": "692c6e7b483784d7a55cf04d98b90c95",
+      "sha256_lf_normalized": "f36602d2fc689f2ce9eed7cd8ff204612045dd58c74bbf386f6347c2efe44d7b",
+      "md5_lf_normalized": "1262969287a9d71accab8d7587cb161e",
+      "line_endings": "CRLF"
+    },
+    "swin_pair": {
+      "file": "swin_pair_test_tta4.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "4d15c48af56cd92252819ab1c9335fbf8648c8799c6190d19e019aad6f3129d9",
+      "md5": "0825072672651298f36e3e7991ab60ad",
+      "sha256_lf_normalized": "760e3242495a1cb3fda7ec7e645bdcd2ef9f9dc34c01a9df4941fde341baa567",
+      "md5_lf_normalized": "8cea0b01575933f11896d7a961294171",
+      "line_endings": "CRLF"
+    },
+    "fin_repro": {
+      "file": "docs/audit_98_87/FINAL_REPRO_98_87.csv",
+      "bytes": 158120,
+      "rows": 5855,
+      "sha256": "e4092e45518b95557d3256763de80f22b782978fbe4e155df543c85db556f8f7",
+      "md5": "4bf37b7c062f7d45a9c5a8e287fff1eb",
+      "sha256_lf_normalized": "e5bf702c18e28ea4fbc08b88398d541aed91852787fb994d096687146420fab7",
+      "md5_lf_normalized": "0a19b68920dbed2fe080133ccf12f386",
+      "line_endings": "CRLF"
+    }
+  },
+  "models": [
+    {
+      "role": "ens10/ens9",
+      "name": "cb512",
+      "arch": "convnext_base",
+      "img": 512,
+      "cache": "cache768",
+      "train_scope": "train-only",
+      "pseudo": false,
+      "weight_in_ens9": 0.591,
+      "note": "多尺度未用于 ens9；单尺度 TTA4",
+      "weights_asset": {
+        "name": "convnext_base_512_cache768_1016_auprc0.8765.pt",
+        "release": "weights-1016",
+        "bytes": 176328486,
+        "sha256": "2b23c73c691cdef5b8a698fd40a781c0b8498c1bba2008fbaa76f3a244af53e5",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_base_512_cache768_1016_auprc0.8765.pt"
+      }
+    },
+    {
+      "role": "ens10/ens9",
+      "name": "hi512_v2",
+      "arch": "convnext_small",
+      "img": 512,
+      "cache": "cache768",
+      "train_scope": "train-only",
+      "pseudo": false,
+      "weight_in_ens9": 0.224,
+      "note": "单尺度 TTA4",
+      "weights_asset": {
+        "name": "convnext_small_512_cache768_1016_auprc0.8752.pt",
+        "release": "weights-1016",
+        "bytes": 99843809,
+        "sha256": "0212cd537f16e28ccec6bdf58836ef2b92325b3aeeb49e0da14a6db39473e16d",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_small_512_cache768_1016_auprc0.8752.pt"
+      }
+    },
+    {
+      "role": "ens10/ens9",
+      "name": "cb384",
+      "arch": "convnext_base",
+      "img": 384,
+      "cache": "cache512",
+      "train_scope": "train-only",
+      "pseudo": false,
+      "weight_in_ens9": 0.141,
+      "note": "单尺度 TTA4",
+      "weights_asset": {
+        "name": "convnext_base_384_cache512_1015_auprc0.8644.pt",
+        "release": "weights-1016",
+        "bytes": 176328125,
+        "sha256": "a389f41cb367132b4c23e2f9195bf15ac87c9df1214d359656f36ee63aff710e",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/convnext_base_384_cache512_1015_auprc0.8644.pt"
+      }
+    },
+    {
+      "role": "ens10/ens9",
+      "name": "b512",
+      "arch": "efficientnet_b3",
+      "img": 512,
+      "cache": "cache512",
+      "train_scope": "train-only",
+      "pseudo": false,
+      "weight_in_ens9": 0.044,
+      "note": "单尺度 TTA4",
+      "weights_asset": {
+        "name": "effnet_b3_512_cache512_1014_auprc0.8142.pt",
+        "release": "weights-1016",
+        "bytes": 23544137,
+        "sha256": "693bf2fc0bfa96c75898d0c536ec6bc1a2bafc20e6a8a1d01195e8972d260e86",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/effnet_b3_512_cache512_1014_auprc0.8142.pt"
+      }
+    },
+    {
+      "role": "ens10/train+all family",
+      "name": "cs_hi512_all",
+      "arch": "convnext_small",
+      "img": 512,
+      "cache": "cache_all768",
+      "train_scope": "train+all(57245)",
+      "pseudo": false,
+      "weight_in_ens10": 0.1,
+      "note": "家族内 0.5（与 RA 版等权）",
+      "weights_asset": {
+        "name": "cs_hi512_all_fp16.pt",
+        "release": "weights-1016",
+        "bytes": 199660651,
+        "sha256": "3e04d1906965742d8b13657b16e539063b05dab622c5272454939f57105f492e",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/cs_hi512_all_fp16.pt"
+      }
+    },
+    {
+      "role": "ens10/train+all family",
+      "name": "cs_hi512_all_ra",
+      "arch": "convnext_small",
+      "img": 512,
+      "cache": "cache_all768",
+      "train_scope": "train+all(57245) + RandAugment",
+      "pseudo": false,
+      "weight_in_ens10": 0.1,
+      "note": "家族内 0.5",
+      "weights_asset": {
+        "name": "cs_hi512_all_ra_fp16.pt",
+        "release": "weights-1016",
+        "bytes": 199662799,
+        "sha256": "ef92911ac1454c28b6f99a974e7deb9ff1ffab91d0ab082ab58dc13a64fe4362",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/cs_hi512_all_ra_fp16.pt"
+      }
+    },
+    {
+      "role": "seedavg",
+      "name": "seed7",
+      "arch": "convnext_base",
+      "img": 512,
+      "cache": "cache_all768",
+      "train_scope": "train+all(57245) + RA, 16ep, seed 7",
+      "pseudo": false,
+      "weight_in_seedavg": 0.5,
+      "note": "logit 空间 0.5/0.5 平均",
+      "weights_asset": {
+        "name": "cnxb_512_e16_ra_all_last.pt",
+        "release": "ra_all-1025",
+        "bytes": 705015055,
+        "sha256": "51e7f3b1e6b71279d2f158cbe647a2979ed4d818f19808328cb28598cb48a980",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/ra_all-1025/cnxb_512_e16_ra_all_last.pt"
+      }
+    },
+    {
+      "role": "seedavg",
+      "name": "seed42",
+      "arch": "convnext_base",
+      "img": 512,
+      "cache": "cache_all768",
+      "train_scope": "train+all(57245) + RA, 16ep, seed 42",
+      "pseudo": false,
+      "weight_in_seedavg": 0.5,
+      "note": "logit 空间 0.5/0.5 平均",
+      "weights_asset": {
+        "name": "cnxb_512_e16_ra_all_s42_last.pt",
+        "release": "ra_all_s42",
+        "bytes": 705015055,
+        "sha256": "34c806b094ce0df09c3b75611031e3a25d151f2008c0c8ec37d0e46df7c47374",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/ra_all_s42/cnxb_512_e16_ra_all_s42_last.pt"
+      }
+    },
+    {
+      "role": "RA_avg",
+      "name": "ra_best",
+      "arch": "convnext_base",
+      "img": 512,
+      "cache": "cache512",
+      "train_scope": "train-only + RA, 16ep",
+      "pseudo": false,
+      "weight_in_ra": 0.5,
+      "note": "先各自 rank 再平均；best.pt",
+      "weights_asset": {
+        "name": "cnxb_512_e16_ra_best.pt",
+        "release": "cnxb_512_e16_ra-1024",
+        "bytes": 705225551,
+        "sha256": "7ac2bb70bdc0405451c6f7a821b6c589f34cecd70f092b7248950dd7d229d296",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/cnxb_512_e16_ra-1024/cnxb_512_e16_ra_best.pt"
+      }
+    },
+    {
+      "role": "RA_avg",
+      "name": "ra_last",
+      "arch": "convnext_base",
+      "img": 512,
+      "cache": "cache512",
+      "train_scope": "train-only + RA, 16ep",
+      "pseudo": false,
+      "weight_in_ra": 0.5,
+      "note": "先各自 rank 再平均；last.pt",
+      "weights_asset": {
+        "name": "cnxb_512_e16_ra_last.pt",
+        "release": "cnxb_512_e16_ra-1024",
+        "bytes": 705225551,
+        "sha256": "842e38f67df2f51f427f992d6d52706c0fe4cebc882704f550dc44135f836364",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/cnxb_512_e16_ra-1024/cnxb_512_e16_ra_last.pt"
+      }
+    },
+    {
+      "role": "Swin_pair",
+      "name": "swinb_384_e16",
+      "arch": "swin_base",
+      "img": 384,
+      "cache": "cache512",
+      "train_scope": "train-only, 16ep",
+      "pseudo": false,
+      "weight_in_swin_pair": 0.5,
+      "note": "checkpoint 未公开，仅有 test probs CSV",
+      "weights_asset": null,
+      "probs_asset": {
+        "name": "swinb_384_test_probs_tta4.csv",
+        "release": "weights-1016",
+        "bytes": 158120,
+        "sha256": "58014e45398d77ae5ef74f836c26855ec2d3b825d4a4392b464b80ab91f01881",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/swinb_384_test_probs_tta4.csv"
+      },
+      "weights_estimate": {
+        "bytes": 349881971,
+        "basis": "同结构 Swin-B@384 fp16 参照（swinb_384_all_v3_fp16.pt），非实测"
+      }
+    },
+    {
+      "role": "Swin_pair",
+      "name": "swinb_384_e16_s7",
+      "arch": "swin_base",
+      "img": 384,
+      "cache": "cache512",
+      "train_scope": "train-only, 16ep, seed 7",
+      "pseudo": false,
+      "weight_in_swin_pair": 0.5,
+      "note": "checkpoint 未公开，仅有 test probs CSV",
+      "weights_asset": null,
+      "probs_asset": {
+        "name": "swinb_384_e16_s7_test_probs_tta4.csv",
+        "release": "weights-1016",
+        "bytes": 158120,
+        "sha256": "e848a78a468dd7b14828ddd34683325e62321ce8c29927aacca9ec6221391f7f",
+        "url": "https://github.com/dongmingkun/glaucoma_first/releases/download/weights-1016/swinb_384_e16_s7_test_probs_tta4.csv"
+      },
+      "weights_estimate": {
+        "bytes": 349881971,
+        "basis": "同结构 Swin-B@384 fp16 参照（swinb_384_all_v3_fp16.pt），非实测"
+      }
+    }
+  ],
+  "package": {
+    "compliant_98_87": false,
+    "reason": "98.87 需要 12 个不同 checkpoint（含 4 个 512 分辨率 Base + 2 个 Swin-B），仅 ens10 的 6 个成员 fp16 就已 875MB > 500MB；且 12 模型×TTA4 单图耗时远超 100ms（无 T4 实测，结构上不可行）",
+    "members_published_weight_bytes": 3695849219,
+    "members_swin_estimate_bytes": 699763942,
+    "members_total_with_estimate_bytes": 4395613161,
+    "slim_fp16_estimate_bytes": 1699706251,
+    "existing_compliant_pkg": {
+      "release": "compliant_pkg-1028",
+      "models": 3,
+      "bytes": 475820470,
+      "score": 98.72,
+      "note": "cb384 + cs_hi512_all + cs_hi512_all_ra(1028 版)，475.82MB，能复现 98.72（b664），不能复现 98.87"
+    },
+    "t4_latency": "未测；3 模型 TTA1 在 RTX 5060 上 52–58ms/图（非 T4），12 模型×TTA4 ≈ 48 次前向，量级 ≥900ms/图"
+  },
+  "gaps": [
+    "Swin_pair 两个 checkpoint 未公开（Release 只有 test/valid 概率 CSV）",
+    "ens10 的逐成员构建脚本未入库，只能用已发布的 ens10 CSV 作为该槽位输入",
+    "全部成员的 T4 单图延迟未实测；98.87 无 ≤500MB/≤100ms 合规包"
+  ],
+  "compliance": "成员全部为官方 train/valid 训练（train-only 或 train+all），无 test 伪标签、无外部医学权重；本清单不含 test 标签，未做任何线上提交"
+}
