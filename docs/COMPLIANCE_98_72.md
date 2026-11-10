@@ -53,8 +53,9 @@ p50 94.70 / p95 108.15 / max 147.63
 
 ## 2. F2：cost.py 与 predict.py 一致性（模板口径）
 
-cost 路径直接 `import predict.py`，调用同一个 `load_model` / `run_group`；模型 `eval()`，
-无随机增强、无 dropout、无采样，推理路径本身无随机算子（脚本未显式设种子，结果不受影响）。
+本地没有官方 `cost.py`，按模板描述写了等价脚本：直接 `import predict.py`，调用同一个
+`load_model` / `run_group`；模型 `eval()`，无随机增强、无 dropout、无采样，推理路径本身
+无随机算子（脚本未显式设种子，结果不受影响）。
 
 100 张逐张比对（cost 路径 vs `predict.py` CLI，均 TTA1、batch=1）：
 
@@ -68,7 +69,7 @@ cost 路径直接 `import predict.py`，调用同一个 `load_model` / `run_grou
 
 模板要求二值/排序不一致为 0、|Δp|≤1e-3；三项均满足。
 
-**注意**：这是包内 `cost.py` 路径与 `predict.py` 路径的一致性，不是“包 vs 官方 98.72 CSV”的
+**注意**：这是本地等价脚本与 `predict.py` CLI 两条包内路径的一致性，不是“包 vs 官方 98.72 CSV”的
 一致性。后者仍缺原图（§4）。
 
 ## 3. F3：包体（模板口径）
