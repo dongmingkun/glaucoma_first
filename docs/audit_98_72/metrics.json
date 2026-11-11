@@ -1,0 +1,73 @@
+{
+  "device": "Tesla T4",
+  "torch": "2.11.0+cu130",
+  "assets": [
+    {
+      "name": "cb384.pt",
+      "bytes": 176328125,
+      "sha256": "a389f41cb367132b4c23e2f9195bf15ac87c9df1214d359656f36ee63aff710e"
+    },
+    {
+      "name": "cs_hi512_all.pt",
+      "bytes": 199660651,
+      "sha256": "3e04d1906965742d8b13657b16e539063b05dab622c5272454939f57105f492e"
+    },
+    {
+      "name": "cs_hi512_all_ra.pt",
+      "bytes": 99831694,
+      "sha256": "5a04ebe3152416022b0e07c9d42f7af57532b9cb366771c09889173a154c86e6"
+    }
+  ],
+  "f1_100": {
+    "seconds": [
+      14.932,
+      14.571,
+      14.601
+    ],
+    "mean_ms_per_img": 147.01,
+    "min_ms_per_img": 145.71
+  },
+  "f1_cost_100": {
+    "p50_ms": 72.99,
+    "p95_ms": 80.42,
+    "mean_ms": 73.98
+  },
+  "f2_100": {
+    "binary_mismatch": 0,
+    "max_abs_diff": 4.546805467456642e-06,
+    "mean_abs_diff": 4.4185228075267413e-07
+  },
+  "full": {
+    "rows": 5855,
+    "seconds": 531.4,
+    "ms_per_img": 90.76,
+    "md5_crlf": "ae4200bf296276a834516cbf2e72c26e",
+    "sha256_crlf": "d2447a748e9a40ebc29e95be9dd5857ecf6da714e7fd40d9993a78271c4abb42",
+    "bytes": 158120
+  },
+  "package": {
+    "files": [
+      {
+        "name": "cb384.pt",
+        "bytes": 176328125,
+        "sha256": "a389f41cb367132b4c23e2f9195bf15ac87c9df1214d359656f36ee63aff710e"
+      },
+      {
+        "name": "cs_hi512_all.pt",
+        "bytes": 199660651,
+        "sha256": "3e04d1906965742d8b13657b16e539063b05dab622c5272454939f57105f492e"
+      },
+      {
+        "name": "cs_hi512_all_ra.pt",
+        "bytes": 99831694,
+        "sha256": "5a04ebe3152416022b0e07c9d42f7af57532b9cb366771c09889173a154c86e6"
+      },
+      {
+        "name": "predict.py",
+        "bytes": 14134,
+        "sha256": "13ef97bd5f6b2af850ddf2171dd9a8b97bf962d73c8c5594d357a891f67a3b4d"
+      }
+    ],
+    "total_bytes": 475834604
+  }
+}

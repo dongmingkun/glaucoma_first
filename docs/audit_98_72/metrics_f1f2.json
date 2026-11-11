@@ -1,0 +1,21 @@
+{
+  "device": "Tesla T4",
+  "torch": "2.11.0+cu130",
+  "protocol": "batch=1 serial, 100 imgs x 3 rounds, per-image mean, excl. load/warmup",
+  "f1_round_mean_ms": [
+    120.74,
+    84.54,
+    84.56
+  ],
+  "f1_mean_ms": 96.61,
+  "f1_p50_ms": 94.7,
+  "f1_p95_ms": 108.15,
+  "f1_max_ms": 147.63,
+  "f2": {
+    "binary_mismatch": 0,
+    "pairwise_inversions": 0,
+    "rank_position_mismatch": 0,
+    "max_abs_diff": 5.000000000000013e-06,
+    "mean_abs_diff": 2.3999999999999717e-07
+  }
+}

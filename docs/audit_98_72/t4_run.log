@@ -1,0 +1,85 @@
+[{"stream_name":"stdout","time":9.686654596,"data":"torch: 2.11.0+cu130 cuda: Tesla T4\n"}
+,{"stream_name":"stdout","time":10.069135478,"data":"  0 MB\n"}
+,{"stream_name":"stdout","time":10.433158018,"data":"  0 MB\n"}
+,{"stream_name":"stdout","time":10.433275116,"data":"download convnext_base_384_cache512_1015_auprc0.8644.pt\n"}
+,{"stream_name":"stdout","time":15.92548751,"data":"  52 MB\n"}
+,{"stream_name":"stdout","time":20.784960382,"data":"  105 MB\n"}
+,{"stream_name":"stdout","time":25.556340438,"data":"  157 MB\n"}
+,{"stream_name":"stdout","time":27.537812164,"data":"OK cb384.pt 176328125 a389f41cb367132b4c23e2f9195bf15ac87c9df1214d359656f36ee63aff710e\n"}
+,{"stream_name":"stdout","time":27.537842091999998,"data":"download cs_hi512_all_fp16.pt\n"}
+,{"stream_name":"stdout","time":31.746605141,"data":"  52 MB\n"}
+,{"stream_name":"stdout","time":36.723849174,"data":"  105 MB\n"}
+,{"stream_name":"stdout","time":42.104596905,"data":"  157 MB\n"}
+,{"stream_name":"stdout","time":46.901483976,"data":"OK cs_hi512_all.pt 199660651 3e04d1906965742d8b13657b16e539063b05dab622c5272454939f57105f492e\n"}
+,{"stream_name":"stdout","time":46.901517537,"data":"download cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":52.46992931,"data":"  52 MB\n"}
+,{"stream_name":"stdout","time":57.993228857,"data":"OK cs_hi512_all_ra.pt 99831694 5a04ebe3152416022b0e07c9d42f7af57532b9cb366771c09889173a154c86e6\n"}
+,{"stream_name":"stdout","time":58.624622619,"data":"images: /kaggle/input/datasets/linglingyusc/glaucoma/cache_all/test\n"}
+,{"stream_name":"stdout","time":68.37304958,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":69.360799674,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":70.270223508,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":70.270253971,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":70.272420415,"data":"5 images to predict\n"}
+,{"stream_name":"stdout","time":70.27245314,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":78.013893918,"data":"  model convnext_base (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":78.013931341,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":78.013938888,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":78.014401981,"data":"wrote /kaggle/working/warm5.csv: 5 rows in 8s (pos_rate=0.00%)\n"}
+,{"stream_name":"stdout","time":83.439119804,"data":"warmup s= 24.78\n"}
+,{"stream_name":"stdout","time":87.855037716,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":88.86197863,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":89.776879308,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":89.776913799,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":89.797322046,"data":"100 images to predict\n"}
+,{"stream_name":"stdout","time":89.797340047,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":97.587799417,"data":"  model convnext_base (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":97.587847896,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":97.587852741,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":97.588368628,"data":"wrote /kaggle/working/pred100_run1.csv: 100 rows in 8s (pos_rate=2.00%)\n"}
+,{"stream_name":"stdout","time":98.370844875,"data":"run1 s=14.93  149.3 ms/img\n"}
+,{"stream_name":"stdout","time":102.771578581,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":103.755909237,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":104.538195313,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":104.538253636,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":104.560105601,"data":"100 images to predict\n"}
+,{"stream_name":"stdout","time":104.560129463,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":112.164184362,"data":"  model convnext_base (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":112.164213497,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":112.164218832,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":112.164776859,"data":"wrote /kaggle/working/pred100_run2.csv: 100 rows in 8s (pos_rate=2.00%)\n"}
+,{"stream_name":"stdout","time":112.941984385,"data":"run2 s=14.57  145.7 ms/img\n"}
+,{"stream_name":"stdout","time":117.302060098,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":118.28165762,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":119.060783968,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":119.060817843,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":119.08258841,"data":"100 images to predict\n"}
+,{"stream_name":"stdout","time":119.082612172,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":126.787962667,"data":"  model convnext_base (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":126.788250043,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":126.788570939,"data":"  model convnext_small (cache512) done (8s elapsed)\n"}
+,{"stream_name":"stdout","time":126.789094733,"data":"wrote /kaggle/working/pred100_run3.csv: 100 rows in 8s (pos_rate=2.00%)\n"}
+,{"stream_name":"stdout","time":127.543440579,"data":"run3 s=14.60  146.0 ms/img\n"}
+,{"stream_name":"stdout","time":130.325376784,"data":"model cb384.pt {'arch': 'convnext_base', 'img_size': 384, 'cache_size': 512, 'use': 'model'}\n"}
+,{"stream_name":"stdout","time":131.30225152,"data":"model cs_hi512_all.pt {'arch': 'convnext_small', 'img_size': 512, 'cache_size': 512, 'use': 'ema'}\n"}
+,{"stream_name":"stdout","time":132.081944028,"data":"model cs_hi512_all_ra.pt {'arch': 'convnext_small', 'img_size': 512, 'cache_size': 512, 'use': 'ema'}\n"}
+,{"stream_name":"stdout","time":140.124509172,"data":"cost path: {'p50_ms': 72.99, 'p95_ms': 80.42, 'mean_ms': 73.98}\n"}
+,{"stream_name":"stdout","time":140.125454887,"data":"F2: {'binary_mismatch': 0, 'max_abs_diff': 4.546805467456642e-06, 'mean_abs_diff': 4.4185228075267413e-07}\n"}
+,{"stream_name":"stdout","time":144.632907162,"data":"model: arch=convnext_base img_size=384 cache_size=512 use=model \u003c- /kaggle/working/pkg/cb384.pt\n"}
+,{"stream_name":"stdout","time":145.630395837,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all.pt\n"}
+,{"stream_name":"stdout","time":146.541601594,"data":"model: arch=convnext_small img_size=512 cache_size=512 use=ema \u003c- /kaggle/working/pkg/cs_hi512_all_ra.pt\n"}
+,{"stream_name":"stdout","time":146.541634066,"data":"ensemble: 3 models, blend=[0.3333, 0.3333, 0.3333], tta=1, calib_shift=0.0\n"}
+,{"stream_name":"stdout","time":313.045280069,"data":"5855 images to predict\n"}
+,{"stream_name":"stdout","time":313.045339756,"data":"cache_size groups: [(512, 3)]\n"}
+,{"stream_name":"stdout","time":670.771797788,"data":"  model convnext_base (cache512) done (358s elapsed)\n"}
+,{"stream_name":"stdout","time":670.771845338,"data":"  model convnext_small (cache512) done (358s elapsed)\n"}
+,{"stream_name":"stdout","time":670.771851471,"data":"  model convnext_small (cache512) done (358s elapsed)\n"}
+,{"stream_name":"stdout","time":670.781005669,"data":"wrote /kaggle/working/submission.csv: 5855 rows in 358s (pos_rate=4.71%)\n"}
+,{"stream_name":"stdout","time":671.537549376,"data":"full: {'rows': 5855, 'seconds': 531.4, 'ms_per_img': 90.76, 'md5_crlf': 'ae4200bf296276a834516cbf2e72c26e', 'sha256_crlf': 'd2447a748e9a40ebc29e95be9dd5857ecf6da714e7fd40d9993a78271c4abb42', 'bytes': 158120}\n"}
+,{"stream_name":"stdout","time":671.538111349,"data":"DONE\n"}
+,{"stream_name":"stderr","time":674.666623972,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":674.666651763,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":674.981377866,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":674.981402201,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":675.840574757,"data":"[NbConvertApp] Converting notebook __script__.ipynb to html\n"}
+,{"stream_name":"stderr","time":676.927918459,"data":"[NbConvertApp] Writing 328600 bytes to __results__.html\n"}
+]
